@@ -23,6 +23,14 @@ class ContourGeneratorTest {
     }
 
     @Test
+    fun highZoomUsesFinerSampling() {
+        assertTrue(ContourGenerator.maxDimForZoom(12.0) == ContourGenerator.DEFAULT_MAX_DIM)
+        assertTrue(ContourGenerator.maxDimForZoom(14.0) == 160)
+        assertTrue(ContourGenerator.maxDimForZoom(16.0) == 256)
+        assertTrue(ContourGenerator.maxDimForZoom(18.0) == 256)
+    }
+
+    @Test
     fun flatGridHasNoContours() {
         val elev = FloatArray(9) { 1000f }
         val grid = DemGrid(0.0, 0.0, 1.0, 1.0, 3, 3, elev)

@@ -24,18 +24,21 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.trailmap.gps.data.MapLayer
 import com.trailmap.gps.data.TrackPoint
 import com.trailmap.gps.data.providers.BoundingBox
+import com.trailmap.gps.geo.GeoMath
 import com.trailmap.gps.location.GpsUpdate
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.location.LocationComponentActivationOptions
+import org.maplibre.android.location.LocationComponentOptions
 import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.geometry.LatLngQuad
 import org.maplibre.android.style.layers.CircleLayer
+import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
@@ -73,7 +76,8 @@ fun TrailMapView(
     terrainOverlay: Bitmap? = null,
     terrainOverlayBounds: BoundingBox? = null,
     onMapReady: (MapLibreMap) -> Unit = {},
-    onBearingChanged: (Double) -> Unit = {}
+    onBearingChanged: (Double) -> Unit = {},
+    onScaleChanged: (zoom: Double, latitude: Double) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -93,6 +97,12 @@ fun TrailMapView(
     regionInsetState.value = regionInsetDp
     boundsCallbackState.value = onRegionBoundsChanged
     val density = LocalDensity.current
+    val scaleHandler = rememberUpdatedState(onScaleChanged)
+
+    fun reportScale(map: MapLibreMap) {
+        val target = map.cameraPosition.target ?: return
+        scaleHandler.value(map.cameraPosition.zoom, target.latitude)
+    }
 
     fun reportRegionBounds(map: MapLibreMap, view: MapView) {
         val inset = regionInsetState.value ?: return
@@ -124,6 +134,7 @@ fun TrailMapView(
         val builder = Style.Builder().fromJson(styleJson)
         map.setStyle(builder) { style ->
             setupRouteLayers(style, routeColorHex)
+            setupUncertainty(style)
             setupContourLayers(style)
             updateAllRouteData(style, routePoints, drawPoints, trackPoints)
             updateInspectPoint(style, inspectPoint)
@@ -136,6 +147,7 @@ fun TrailMapView(
             }
             styleLoaded = true
             onMapReady(map)
+            reportScale(map)
             mapView?.let { view -> reportRegionBounds(map, view) }
         }
     }
@@ -156,9 +168,11 @@ fun TrailMapView(
                     map.prefetchZoomDelta = if (batterySaver) 0 else 3
                     map.addOnCameraMoveListener {
                         onBearingChanged(map.cameraPosition.bearing.toDouble())
+                        reportScale(map)
                     }
                     map.addOnCameraIdleListener {
                         reportRegionBounds(map, this@apply)
+                        reportScale(map)
                     }
                     map.addOnMapClickListener { point ->
                         val handler = clickHandlerState.value
@@ -224,7 +238,7 @@ fun TrailMapView(
         mapRef?.style?.let { updateInspectPoint(it, inspectPoint) }
     }
 
-    LaunchedEffect(terrainOverlay, terrainOverlayBounds, styleLoaded) {
+    LaunchedEffect(terrainOverlay, terrainOverlayBounds, overlayOpacity, styleLoaded) {
         if (!styleLoaded) return@LaunchedEffect
         mapRef?.style?.let { updateTerrainOverlay(it, terrainOverlay, terrainOverlayBounds, overlayOpacity) }
     }
@@ -315,17 +329,30 @@ fun TrailMapView(
 
     LaunchedEffect(currentLocation, styleLoaded) {
         if (!styleLoaded) return@LaunchedEffect
-        val loc = currentLocation ?: return@LaunchedEffect
-        mapRef?.locationComponent?.forceLocationUpdate(
-            android.location.Location("gps").apply {
-                latitude = loc.latitude
-                longitude = loc.longitude
-                altitude = loc.elevation
-                accuracy = loc.accuracy
-                bearing = loc.bearing
-                speed = loc.speed
-            }
-        )
+        val map = mapRef ?: return@LaunchedEffect
+        val loc = currentLocation
+        val style = map.style
+        if (loc == null) {
+            style?.let { updateUncertainty(it, null) }
+            runCatching { map.locationComponent.isLocationComponentEnabled = false }
+            return@LaunchedEffect
+        }
+        style?.let { updateUncertainty(it, loc) }
+        runCatching {
+            val component = map.locationComponent
+            component.isLocationComponentEnabled = true
+            component.renderMode = if (loc.showPrecisePuck) RenderMode.COMPASS else RenderMode.NORMAL
+            component.forceLocationUpdate(
+                android.location.Location("gps").apply {
+                    latitude = loc.latitude
+                    longitude = loc.longitude
+                    altitude = loc.elevation
+                    accuracy = loc.accuracy
+                    bearing = loc.bearing
+                    speed = loc.speed
+                }
+            )
+        }
     }
 }
 
@@ -334,7 +361,12 @@ private fun activateLocationComponent(context: android.content.Context, map: Map
     val lc = map.locationComponent
     lc.activateLocationComponent(
         LocationComponentActivationOptions.builder(context, style)
-            .useDefaultLocationEngine(true)
+            .useDefaultLocationEngine(false)
+            .locationComponentOptions(
+                LocationComponentOptions.builder(context)
+                    .accuracyAlpha(0f)
+                    .build()
+            )
             .build()
     )
     lc.isLocationComponentEnabled = true
@@ -396,6 +428,10 @@ private fun setupRouteLayers(style: Style, routeColorHex: String) {
                     PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
                     PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND)
                 )
+            )
+        } else if (def.layerId == ROUTE_LAYER) {
+            (style.getLayer(ROUTE_LAYER) as? LineLayer)?.setProperties(
+                PropertyFactory.lineColor(AndroidColor.parseColor(def.color))
             )
         }
     }
@@ -470,6 +506,9 @@ private fun updateTerrainOverlay(style: Style, bitmap: Bitmap?, bounds: Bounding
     } else {
         existing.setImage(bitmap)
         existing.setCoordinates(quad)
+        (style.getLayer(OVERLAY_LAYER) as? RasterLayer)?.setProperties(
+            PropertyFactory.rasterOpacity(opacity)
+        )
     }
 }
 
@@ -531,6 +570,48 @@ fun fitBounds(map: MapLibreMap, points: List<TrackPoint>, paddingPx: Int = 120) 
     }
 }
 
+private fun setupUncertainty(style: Style) {
+    if (style.getSource(UNCERTAINTY_SOURCE) != null) return
+    style.addSource(GeoJsonSource(UNCERTAINTY_SOURCE))
+    style.addLayer(
+        FillLayer(UNCERTAINTY_FILL, UNCERTAINTY_SOURCE).withProperties(
+            PropertyFactory.fillColor(AndroidColor.parseColor("#38BDF8")),
+            PropertyFactory.fillOpacity(0.18f)
+        )
+    )
+    style.addLayer(
+        LineLayer(UNCERTAINTY_LINE, UNCERTAINTY_SOURCE).withProperties(
+            PropertyFactory.lineColor(AndroidColor.parseColor("#38BDF8")),
+            PropertyFactory.lineWidth(1.5f)
+        )
+    )
+}
+
+private fun updateUncertainty(style: Style, loc: GpsUpdate?) {
+    val source = style.getSource(UNCERTAINTY_SOURCE) as? GeoJsonSource ?: return
+    val radius = loc?.accuracy?.toDouble() ?: Double.NaN
+    if (loc == null || !radius.isFinite() || radius <= 0.0) {
+        source.setGeoJson(EMPTY_FEATURE_COLLECTION)
+        return
+    }
+    source.setGeoJson(uncertaintyPolygon(loc.latitude, loc.longitude, radius.coerceAtLeast(6.0)))
+}
+
+private fun uncertaintyPolygon(lat: Double, lon: Double, radiusM: Double): String {
+    val ring = JSONArray()
+    for (step in 0..36) {
+        val (pointLat, pointLon) = GeoMath.destination(lat, lon, step * 10.0, radiusM)
+        ring.put(JSONArray().put(pointLon).put(pointLat))
+    }
+    val feature = JSONObject()
+        .put("type", "Feature")
+        .put("geometry", JSONObject().put("type", "Polygon").put("coordinates", JSONArray().put(ring)))
+    return JSONObject().put("type", "FeatureCollection").put("features", JSONArray().put(feature)).toString()
+}
+
+private const val UNCERTAINTY_SOURCE = "uncertainty-source"
+private const val UNCERTAINTY_FILL = "uncertainty-fill"
+private const val UNCERTAINTY_LINE = "uncertainty-line"
 private const val ROUTE_SOURCE = "route-source"
 private const val ROUTE_LAYER = "route-layer"
 private const val DRAW_SOURCE = "draw-source"

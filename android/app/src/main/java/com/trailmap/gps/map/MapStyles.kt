@@ -9,15 +9,15 @@ object MapStyles {
         "https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/tile/{z}/{y}/{x}"
     const val USGS_IMAGERY_URL =
         "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}"
-    const val USGS_HISTORICAL_URL =
-        "https://ngmdb.usgs.gov/arcgis/rest/services/topoview/ustOverlayAuto/MapServer/tile/{z}/{y}/{x}"
+    const val USA_TOPO_URL =
+        "https://server.arcgisonline.com/ArcGIS/rest/services/USA_Topo_Maps/MapServer/tile/{z}/{y}/{x}"
 
     fun styleJson(layer: MapLayer, hillshade: Boolean = false): String {
         return when (layer) {
             MapLayer.ARETE_TOPO -> areteTopo(hillshade)
             MapLayer.USGS_TOPO -> usgsRaster("usgs-topo", USGS_TOPO_URL, 16, "USGS The National Map")
             MapLayer.IMAGERY -> usgsImagery(hillshade)
-            MapLayer.HISTORICAL -> usgsRaster("usgs-historical", USGS_HISTORICAL_URL, 16, "USGS Historical Topographic Map Collection")
+            MapLayer.HISTORICAL -> historicalWithBase()
             MapLayer.OPENTOPO -> if (hillshade) OPENTOPO_WITH_HILLSHADE else OPENTOPO_STYLE
             MapLayer.SATELLITE -> SATELLITE_STYLE
             MapLayer.OSM -> OSM_STYLE
@@ -58,7 +58,8 @@ object MapStyles {
       "type": "raster",
       "source": "usgs-shade",
       "paint": {
-        "raster-opacity": ["interpolate", ["linear"], ["zoom"], 4, $shadeHi, 11, $shadeMid, 16, $shadeLo]
+        "raster-opacity": ["interpolate", ["linear"], ["zoom"], 4, $shadeHi, 11, $shadeMid, 16, $shadeLo],
+        "raster-resampling": "linear"
       }
     },
     {
@@ -66,7 +67,8 @@ object MapStyles {
       "type": "raster",
       "source": "usgs-topo",
       "paint": {
-        "raster-opacity": ["interpolate", ["linear"], ["zoom"], 4, 0.70, 10, 0.88, 14, 1.0]
+        "raster-opacity": ["interpolate", ["linear"], ["zoom"], 4, 0.70, 10, 0.88, 14, 1.0],
+        "raster-resampling": "linear"
       }
     }
   ]
@@ -80,7 +82,7 @@ object MapStyles {
       "id": "usgs-shade-over-imagery",
       "type": "raster",
       "source": "usgs-shade",
-      "paint": { "raster-opacity": 0.28 }
+      "paint": { "raster-opacity": 0.28, "raster-resampling": "linear" }
     }""" else ""
         val shadeSource = if (hillshade) """
     ,"usgs-shade": {
@@ -104,12 +106,44 @@ object MapStyles {
   },
   "layers": [
     { "id": "background", "type": "background", "paint": { "background-color": "#0b1210" } },
-    { "id": "usgs-imagery-layer", "type": "raster", "source": "usgs-imagery" }
+    { "id": "usgs-imagery-layer", "type": "raster", "source": "usgs-imagery", "paint": { "raster-resampling": "linear" } }
     $shadeLayer
   ]
 }
 """
     }
+
+    /**
+     * NGMDB HTMC is not a public XYZ cache (tile requests 404). Show current USGS
+     * Topo underneath so the screen is never black, then the classic paper-style
+     * USA Topo Maps sheets when a network fetch succeeds.
+     */
+    private fun historicalWithBase(): String = """
+{
+  "version": 8,
+  "sources": {
+    "usgs-topo": {
+      "type": "raster",
+      "tiles": ["$USGS_TOPO_URL"],
+      "tileSize": 256,
+      "maxzoom": 16,
+      "attribution": "USGS The National Map"
+    },
+    "usa-topo": {
+      "type": "raster",
+      "tiles": ["$USA_TOPO_URL"],
+      "tileSize": 256,
+      "maxzoom": 15,
+      "attribution": "USGS / Esri USA Topo Maps"
+    }
+  },
+  "layers": [
+    { "id": "background", "type": "background", "paint": { "background-color": "#d6c9a8" } },
+    { "id": "usgs-topo-base", "type": "raster", "source": "usgs-topo", "paint": { "raster-opacity": 1.0, "raster-resampling": "linear" } },
+    { "id": "classic-topo-layer", "type": "raster", "source": "usa-topo", "paint": { "raster-opacity": 0.92, "raster-resampling": "linear" } }
+  ]
+}
+"""
 
     private fun usgsRaster(id: String, url: String, maxZoom: Int, attribution: String): String = """
 {
@@ -125,7 +159,7 @@ object MapStyles {
   },
   "layers": [
     { "id": "background", "type": "background", "paint": { "background-color": "#0b1210" } },
-    { "id": "$id-layer", "type": "raster", "source": "$id" }
+    { "id": "$id-layer", "type": "raster", "source": "$id", "paint": { "raster-resampling": "linear" } }
   ]
 }
 """
@@ -178,7 +212,7 @@ object MapStyles {
   },
   "layers": [
     { "id": "background", "type": "background", "paint": { "background-color": "#0b1210" } },
-    { "id": "hillshade-layer", "type": "raster", "source": "hillshade", "paint": { "raster-opacity": 0.30 } },
+    { "id": "hillshade-layer", "type": "raster", "source": "hillshade", "paint": { "raster-opacity": 0.30, "raster-resampling": "linear" } },
     { "id": "opentopo-layer", "type": "raster", "source": "opentopo" }
   ]
 }

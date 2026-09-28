@@ -6,11 +6,6 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Looper
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.location.LocationResult
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
 import com.trailmap.gps.data.PowerProfile
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -26,11 +21,17 @@ data class GpsUpdate(
     val timestamp: Long,
     val quality: LocationQuality = LocationQuality.GOOD,
     val ageMs: Long = 0L,
-    val provider: String = ""
+    val provider: String = "",
+    val integrityLabel: String = "",
+    val positionReason: String = "",
+    val observed: Boolean = true,
+    val verifiedAgeMs: Long = 0L,
+    val recordable: Boolean = true,
+    /** Heading chevron when the fix is trusted. The location mark itself always draws. */
+    val showPrecisePuck: Boolean = true
 )
 
 class LocationTracker(private val context: Context) {
-    private val fusedClient = LocationServices.getFusedLocationProviderClient(context)
     private val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
     @SuppressLint("MissingPermission")
@@ -56,18 +57,7 @@ class LocationTracker(private val context: Context) {
             )
             awaitClose { locationManager.removeUpdates(listener) }
         } else {
-            val request = LocationRequest.Builder(
-                Priority.PRIORITY_HIGH_ACCURACY,
-                interval
-            ).setMinUpdateIntervalMillis(interval).build()
-
-            val callback = object : LocationCallback() {
-                override fun onLocationResult(result: LocationResult) {
-                    result.lastLocation?.let { trySend(it.toGpsUpdate()) }
-                }
-            }
-            fusedClient.requestLocationUpdates(request, callback, Looper.getMainLooper())
-            awaitClose { fusedClient.removeLocationUpdates(callback) }
+            awaitClose { }
         }
     }
 
@@ -75,7 +65,6 @@ class LocationTracker(private val context: Context) {
     fun getLastLocation(): GpsUpdate? {
         return try {
             locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)?.toGpsUpdate()
-                ?: fusedClient.lastLocation.result?.toGpsUpdate()
         } catch (_: Exception) {
             null
         }

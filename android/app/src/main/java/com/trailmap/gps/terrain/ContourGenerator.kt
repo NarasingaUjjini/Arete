@@ -14,6 +14,8 @@ data class ContourLine(
  * Elevations are DEM meters — never labeled as GPS altitude.
  */
 object ContourGenerator {
+    const val DEFAULT_MAX_DIM = 96
+
     fun intervalFor(minZ: Double, maxZ: Double): Double {
         val range = (maxZ - minZ).coerceAtLeast(1.0)
         return when {
@@ -24,7 +26,14 @@ object ContourGenerator {
         }
     }
 
-    fun generate(grid: DemGrid, intervalMeters: Double = 0.0, maxDim: Int = 96): List<ContourLine> {
+    /** Denser DEM sampling at close zoom so local 3DEP contours stay sharp over overzoomed USGS raster. */
+    fun maxDimForZoom(zoom: Double): Int = when {
+        zoom >= 16.0 -> 256
+        zoom >= 14.0 -> 160
+        else -> DEFAULT_MAX_DIM
+    }
+
+    fun generate(grid: DemGrid, intervalMeters: Double = 0.0, maxDim: Int = DEFAULT_MAX_DIM): List<ContourLine> {
         if (grid.cols < 2 || grid.rows < 2) return emptyList()
         var minZ = Double.POSITIVE_INFINITY
         var maxZ = Double.NEGATIVE_INFINITY
@@ -37,12 +46,13 @@ object ContourGenerator {
         val interval = (if (intervalMeters > 0) intervalMeters else intervalFor(minZ, maxZ)).coerceAtLeast(5.0)
         val indexEvery = interval * 5
         val stride = maxOf(1, maxOf(grid.cols, grid.rows) / maxDim)
+        val segmentCap = (5_000L * maxDim / DEFAULT_MAX_DIM).toInt().coerceAtLeast(5_000)
         val first = ceil(minZ / interval) * interval
         val last = floor(maxZ / interval) * interval
         val out = mutableListOf<ContourLine>()
         var level = first
         var segments = 0
-        while (level <= last + 0.001 && segments < 5_000) {
+        while (level <= last + 0.001 && segments < segmentCap) {
             val index = kotlin.math.abs(level / indexEvery - kotlin.math.round(level / indexEvery)) < 1e-6
             var r = 0
             while (r < grid.rows - 1) {
@@ -62,9 +72,9 @@ object ContourGenerator {
         return out
     }
 
-    fun toGeoJson(grid: DemGrid): String {
+    fun toGeoJson(grid: DemGrid, maxDim: Int = DEFAULT_MAX_DIM): String {
         val features = StringBuilder()
-        generate(grid).forEach { line ->
+        generate(grid, maxDim = maxDim).forEach { line ->
             if (line.points.size < 2) return@forEach
             if (features.isNotEmpty()) features.append(',')
             val coords = line.points.joinToString(",") { "[${it[0]},${it[1]}]" }

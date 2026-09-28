@@ -1,5 +1,6 @@
 package com.trailmap.gps.geo
 
+import kotlin.math.asin
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -33,4 +34,17 @@ object GeoMath {
 
     fun isNullIsland(lat: Double, lon: Double): Boolean =
         lat == 0.0 && lon == 0.0
+
+    fun destination(lat: Double, lon: Double, bearingDeg: Double, distanceM: Double): Pair<Double, Double> {
+        val angular = distanceM / EARTH_RADIUS_M
+        val bearing = Math.toRadians(bearingDeg)
+        val lat1 = Math.toRadians(lat)
+        val lon1 = Math.toRadians(lon)
+        val lat2 = asin(sin(lat1) * cos(angular) + cos(lat1) * sin(angular) * cos(bearing))
+        val lon2 = lon1 + atan2(
+            sin(bearing) * sin(angular) * cos(lat1),
+            cos(angular) - sin(lat1) * sin(lat2)
+        )
+        return Math.toDegrees(lat2) to Math.toDegrees(lon2)
+    }
 }
