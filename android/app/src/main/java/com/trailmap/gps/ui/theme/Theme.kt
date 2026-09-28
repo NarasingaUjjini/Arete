@@ -4,9 +4,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.dp
+
+val LocalAccent = staticCompositionLocalOf { Amber }
 
 /** Stitch Instrumental Brutalism — DESIGN.md + functional jobs. */
 
@@ -84,10 +88,19 @@ private val AreteColorScheme = darkColorScheme(
 )
 
 @Composable
-fun TrailMapTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = AreteColorScheme,
-        typography = AreteTypography,
-        content = content
+fun TrailMapTheme(accentHex: String = AmberHex, content: @Composable () -> Unit) {
+    val accent = accentColor(accentHex)
+    val scheme = AreteColorScheme.copy(
+        primary = accent,
+        primaryContainer = accent
     )
+    CompositionLocalProvider(LocalAccent provides accent) {
+        MaterialTheme(
+            colorScheme = scheme,
+            typography = AreteTypography,
+            content = content
+        )
+    }
 }
+
+const val AmberHex = "#FF6B00"

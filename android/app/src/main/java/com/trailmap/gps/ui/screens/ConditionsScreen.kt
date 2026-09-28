@@ -40,6 +40,7 @@ import com.trailmap.gps.ui.components.AlpineOutlineButton
 import com.trailmap.gps.ui.components.AlpinePrimaryButton
 import com.trailmap.gps.ui.components.AlpineSectionLabel
 import com.trailmap.gps.ui.theme.Black
+import com.trailmap.gps.ui.theme.LocalAccent
 import com.trailmap.gps.ui.theme.OnSurface
 import com.trailmap.gps.ui.theme.OnSurfaceVariant
 import com.trailmap.gps.ui.theme.RedAlert
@@ -74,7 +75,7 @@ fun ConditionsScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = OnSurface)
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text("MOUNTAIN CONDITIONS", color = com.trailmap.gps.ui.theme.Amber, fontWeight = FontWeight.SemiBold)
+                Text("MOUNTAIN CONDITIONS", color = LocalAccent.current, fontWeight = FontWeight.SemiBold)
                 Text(
                     when {
                         loading -> "Loading official sources…"
@@ -179,6 +180,16 @@ fun ConditionsScreen(
 
             AlpineSectionLabel("Parks & recreation", modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
             Text(conditions?.recreation?.note ?: "", color = OnSurfaceVariant, fontSize = 12.sp)
+            conditions?.recreation?.nearby.orEmpty().forEach { place ->
+                Text(
+                    listOf(place.name, place.type, place.distanceNote).filter { it.isNotBlank() }.joinToString(" · "),
+                    color = OnSurface,
+                    fontSize = 13.sp,
+                    modifier = Modifier
+                        .clickable { open(place.url) }
+                        .padding(top = 8.dp)
+                )
+            }
             Spacer(modifier = Modifier.height(8.dp))
             AlpineOutlineButton("NPS Find a Park", { open(conditions?.recreation?.npsFindParkUrl ?: "https://www.nps.gov/findapark/index.htm") }, Modifier.fillMaxWidth())
             Spacer(modifier = Modifier.height(8.dp))

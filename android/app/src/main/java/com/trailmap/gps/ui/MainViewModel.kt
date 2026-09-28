@@ -29,7 +29,6 @@ import com.trailmap.gps.terrain.DemGrid
 import com.trailmap.gps.terrain.TerrainInspection
 import com.trailmap.gps.terrain.TerrainOverlay
 import com.trailmap.gps.terrain.VerticalSpeedTracker
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -42,10 +41,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val app = application as TrailMapApp
     private val routeRepository = RouteRepository(app.database.routeDao())
     private val locationEngine = app.locationEngine
+    private val headingEngine = app.headingEngine
+    private val positionEngine = app.positionEngine
     private val offlineManager = app.offlineTileManager
     private val demRepository = app.demRepository
     private val tripPacks = app.tripPackManager
     private val conditionsRepository = app.conditionsRepository
+    private val recInfoRepository = app.recInfoRepository
     private val gnssAssistance = GnssAssistance(application)
     private val verticalSpeed = VerticalSpeedTracker()
 
@@ -64,6 +66,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentLocation = MutableStateFlow<GpsUpdate?>(null)
     val currentLocation: StateFlow<GpsUpdate?> = _currentLocation.asStateFlow()
     val locationState = locationEngine.state
+    val deviceHeading = headingEngine.heading
+    val position = positionEngine.snapshot
 
     val isRecording = TrackingService.isRecording
     val recordingPhase = TrackingService.phase
@@ -90,6 +94,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val conditions: StateFlow<com.trailmap.gps.conditions.MountainConditions?> = _conditions.asStateFlow()
     private val _conditionsLoading = MutableStateFlow(false)
     val conditionsLoading: StateFlow<Boolean> = _conditionsLoading.asStateFlow()
+    private val _recInfo = MutableStateFlow<com.trailmap.gps.conditions.RecInfoSnapshot?>(null)
+    val recInfo: StateFlow<com.trailmap.gps.conditions.RecInfoSnapshot?> = _recInfo.asStateFlow()
+    private val _recInfoLoading = MutableStateFlow(false)
+    val recInfoLoading: StateFlow<Boolean> = _recInfoLoading.asStateFlow()
 
     private val _inspection = MutableStateFlow<TerrainInspection?>(null)
     val inspection: StateFlow<TerrainInspection?> = _inspection.asStateFlow()
@@ -121,6 +129,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val returnByMinutes: StateFlow<Int> = _returnByMinutes.asStateFlow()
     private val _magneticNorth = MutableStateFlow(false)
     val magneticNorth: StateFlow<Boolean> = _magneticNorth.asStateFlow()
+    private val _activeMapTool = MutableStateFlow<com.trailmap.gps.ui.maptools.MapTool?>(null)
+    val activeMapTool: StateFlow<com.trailmap.gps.ui.maptools.MapTool?> = _activeMapTool.asStateFlow()
 
     private val _batterySaver = MutableStateFlow(false)
     val batterySaver: StateFlow<Boolean> = _batterySaver.asStateFlow()
@@ -174,20 +184,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         locationEngine.acquire(LocationSession.BROWSING)
+        positionEngine.terrainMeters = { lat, lon ->
+            runCatching { app.demRepository.gridCovering(lat, lon)?.interpolate(lat, lon) }.getOrNull()
+        }
+        positionEngine.routeDistanceMeters = { lat, lon ->
+            val route = _selectedRoute.value
+            if (!_isNavigating.value || route == null) {
+                null
+            } else {
+                com.trailmap.gps.geo.RouteGeometry.project(getRoutePoints(route), lat, lon)?.distanceToRouteMeters
+            }
+        }
+        positionEngine.start()
         viewModelScope.launch {
             settings.collect { locationEngine.setPowerProfile(it.powerProfile) }
         }
         viewModelScope.launch {
-            while (true) {
-                delay(1_000)
-                locationEngine.tickAge()
-            }
-        }
-        viewModelScope.launch {
-            locationEngine.state.collect { state ->
-                val update = state.toGpsUpdate()
+            positionEngine.snapshot.collect { snap ->
+                val update = snap.toGpsUpdate() ?: locationEngine.state.value.toGpsUpdate()
                 _currentLocation.value = update
-                if (update != null) {
+                if (update != null && update.recordable) {
                     verticalSpeed.add(update.timestamp, update.elevation)
                     _verticalMph.value = verticalSpeed.metersPerHour(update.timestamp)
                     if (_isNavigating.value) appendBreadcrumb(update)
@@ -196,9 +212,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun setHeadingWanted(wanted: Boolean) {
+        if (wanted) headingEngine.acquire("ui") else headingEngine.release("ui")
+    }
+
     override fun onCleared() {
         locationEngine.release(LocationSession.BROWSING)
         locationEngine.release(LocationSession.NAVIGATION)
+        headingEngine.release("ui")
+        positionEngine.stop()
         super.onCleared()
     }
 
@@ -313,6 +335,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun recordingElapsedSeconds(): Long = TrackingService.elapsedSeconds()
 
+    fun downloadArea(bounds: DoubleArray, maxZoom: Int = 15, includeDem: Boolean = true, routeId: Long? = null) {
+        downloadOffline(routeId ?: -1L, bounds, maxZoom, includeDem)
+    }
+
     fun downloadOffline(routeId: Long, bounds: DoubleArray, maxZoom: Int = 15, includeDem: Boolean = true) {
         viewModelScope.launch {
             val current = settings.value
@@ -323,7 +349,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 layer = current.mapLayer,
                 hillshade = current.hillshadeEnabled
             )
-            if (bytes > 0) {
+            if (bytes > 0 && routeId > 0) {
                 routeRepository.markOfflineDownloaded(routeId, bytes)
                 _selectedRoute.value = routeRepository.getById(routeId)
             }
@@ -363,11 +389,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val route = _selectedRoute.value
         val focusLat = loc?.latitude ?: route?.let { getRoutePoints(it).firstOrNull()?.lat }
         val focusLon = loc?.longitude ?: route?.let { getRoutePoints(it).firstOrNull()?.lon }
+        val routePoints = route?.let { getRoutePoints(it) }.orEmpty()
         if (focusLat == null || focusLon == null) {
             val latest = demRepository.loadLatest() ?: return null
-            return demRepository.overlayBitmap(mode, (latest.minLat + latest.maxLat) / 2, (latest.minLon + latest.maxLon) / 2)
+            return demRepository.overlayBitmap(
+                mode,
+                (latest.minLat + latest.maxLat) / 2,
+                (latest.minLon + latest.maxLon) / 2,
+                routePoints
+            )
         }
-        return demRepository.overlayBitmap(mode, focusLat, focusLon)
+        return demRepository.overlayBitmap(mode, focusLat, focusLon, routePoints)
     }
 
     fun hasLocalDem(lat: Double? = null, lon: Double? = null): Boolean {
@@ -470,6 +502,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadPackChecks(pack: com.trailmap.gps.data.TripPackEntity?) {
         _packChecks.value = pack?.let { tripPacks.parseManifest(it.manifestJson) }.orEmpty()
+    }
+
+    fun refreshRecInfo() {
+        if (_recInfoLoading.value) return
+        val loc = _currentLocation.value
+        if (loc == null) {
+            _recInfo.value = com.trailmap.gps.conditions.RecInfoSnapshot(
+                error = "Need a GPS fix to search nearby."
+            )
+            return
+        }
+        viewModelScope.launch {
+            _recInfoLoading.value = true
+            _recInfo.value = recInfoRepository.load(loc.latitude, loc.longitude)
+            _recInfoLoading.value = false
+        }
     }
 
     fun refreshConditions() {
@@ -729,10 +777,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return proj.distanceAlongRouteMeters
     }
 
-    fun contourGeoJson(): String? {
+    fun contourGeoJson(maxDim: Int = com.trailmap.gps.terrain.ContourGenerator.DEFAULT_MAX_DIM): String? {
         if (!settings.value.contoursEnabled) return null
         val grid = activeDemGrid() ?: return null
-        return com.trailmap.gps.terrain.ContourGenerator.toGeoJson(grid)
+        return com.trailmap.gps.terrain.ContourGenerator.toGeoJson(grid, maxDim)
     }
 
     fun updateContours(enabled: Boolean) {
@@ -759,6 +807,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val current = settings.value
             app.settingsRepository.setNorthUp(!current.northUp)
+            _orientationTrigger.value += 1
+        }
+    }
+
+    fun alignNorth() {
+        viewModelScope.launch {
+            app.settingsRepository.setNorthUp(true)
             _orientationTrigger.value += 1
         }
     }
@@ -889,6 +944,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateLibraryFilter(value: com.trailmap.gps.data.RouteLibraryFilter) {
         viewModelScope.launch { app.settingsRepository.setLibraryFilter(value) }
+    }
+
+    fun updateMapChrome(value: com.trailmap.gps.data.MapChromeLayout) {
+        viewModelScope.launch { app.settingsRepository.setMapChrome(value) }
+    }
+
+    fun toggleMapTool(tool: com.trailmap.gps.ui.maptools.MapTool) {
+        val next = com.trailmap.gps.ui.maptools.MapToolSession.next(_activeMapTool.value, tool)
+        if (_activeMapTool.value == com.trailmap.gps.ui.maptools.MapTool.ROUTE && next != com.trailmap.gps.ui.maptools.MapTool.ROUTE) {
+            cancelDrawing()
+        }
+        if (next == com.trailmap.gps.ui.maptools.MapTool.ROUTE && !_isDrawingRoute.value) {
+            startDrawing()
+        }
+        _activeMapTool.value = next
+    }
+
+    fun dismissMapTool() {
+        if (_activeMapTool.value == com.trailmap.gps.ui.maptools.MapTool.ROUTE) cancelDrawing()
+        _activeMapTool.value = null
     }
 }
 

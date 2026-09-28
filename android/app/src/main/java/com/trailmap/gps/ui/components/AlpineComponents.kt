@@ -33,7 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.trailmap.gps.ui.theme.AlpineShape
-import com.trailmap.gps.ui.theme.Amber
+import com.trailmap.gps.ui.theme.LocalAccent
 import com.trailmap.gps.ui.theme.Canvas
 import com.trailmap.gps.ui.theme.Hairline
 import com.trailmap.gps.ui.theme.InstrumentBay
@@ -89,7 +89,7 @@ fun AlpineSegmentedControl(
                         .weight(1f)
                         .height(TouchTarget - 4.dp)
                         .clickable { onSelect(index) },
-                    color = if (isSelected) Amber else Color.Transparent,
+                    color = if (isSelected) LocalAccent.current else Color.Transparent,
                     shape = AlpineShape
                 ) {
                     Box(contentAlignment = Alignment.Center) {
@@ -184,13 +184,13 @@ fun AlpineRadioRow(
                     modifier = Modifier.size(18.dp),
                     shape = AlpineShape,
                     color = Color.Transparent,
-                    border = BorderStroke(1.5.dp, if (selected) Amber else SurfaceContainerHighest)
+                    border = BorderStroke(1.5.dp, if (selected) LocalAccent.current else SurfaceContainerHighest)
                 ) {}
                 if (selected) {
                     Box(
                         modifier = Modifier
                             .size(8.dp)
-                            .background(Amber)
+                            .background(LocalAccent.current)
                     )
                 }
             }
@@ -403,7 +403,7 @@ fun AlpinePrimaryButton(
         onClick = onClick,
         modifier = modifier.height(TouchTarget),
         enabled = enabled,
-        color = if (enabled) Amber else Amber.copy(alpha = 0.4f),
+        color = if (enabled) LocalAccent.current else LocalAccent.current.copy(alpha = 0.4f),
         shape = AlpineShape
     ) {
         Box(contentAlignment = Alignment.Center) {
@@ -494,13 +494,13 @@ fun AlpineDropdown(
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                 shape = AlpineShape,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Amber,
+                    focusedBorderColor = LocalAccent.current,
                     unfocusedBorderColor = Hairline,
                     focusedTextColor = OnSurface,
                     unfocusedTextColor = OnSurface,
-                    focusedTrailingIconColor = Amber,
+                    focusedTrailingIconColor = LocalAccent.current,
                     unfocusedTrailingIconColor = OnSurfaceVariant,
-                    cursorColor = Amber
+                    cursorColor = LocalAccent.current
                 ),
                 textStyle = androidx.compose.ui.text.TextStyle(
                     fontFamily = JetBrainsMono,
@@ -518,7 +518,7 @@ fun AlpineDropdown(
                         text = {
                             Text(
                                 option,
-                                color = if (index == safeIndex) Amber else OnSurface,
+                                color = if (index == safeIndex) LocalAccent.current else OnSurface,
                                 fontFamily = JetBrainsMono,
                                 fontSize = 13.sp
                             )

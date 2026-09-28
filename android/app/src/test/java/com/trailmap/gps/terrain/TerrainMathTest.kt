@@ -46,6 +46,21 @@ class TerrainMathTest {
     }
 
     @Test
+    fun slopeAndAspectOverlaysLeaveGapsForTheBasemap() {
+        val pixels = TerrainMath.overlayPixels(rampGrid(), TerrainOverlay.ASPECT)
+        val transparent = pixels.count { it ushr 24 == 0 }
+        assertTrue("expected hatch gaps, transparent=$transparent", transparent > pixels.size / 3)
+    }
+
+    fun routeCorridorClearsOverlayCells() {
+        val grid = rampGrid()
+        val mask = TerrainMath.routeClearMask(grid, listOf(37.005 to -119.005), radiusCells = 2)
+        assertTrue(mask.any { it })
+        val pixels = TerrainMath.overlayPixels(grid, TerrainOverlay.SLOPE, mask)
+        val cleared = mask.indices.count { mask[it] && pixels[it] == 0 }
+        assertTrue(cleared > 0)
+    }
+
     fun hillshadeIsUnitInterval() {
         val shade = TerrainMath.hillshade(Math.toRadians(20.0), 90.0)
         assertTrue(shade in 0.0..1.0)

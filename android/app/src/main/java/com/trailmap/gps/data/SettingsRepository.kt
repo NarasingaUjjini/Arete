@@ -34,6 +34,7 @@ class SettingsRepository(private val context: Context) {
         val OVERLAY_STRENGTH = stringPreferencesKey("overlay_strength")
         val LARGE_NUMBERS = booleanPreferencesKey("large_numbers")
         val LIBRARY_FILTER = stringPreferencesKey("library_filter")
+        val MAP_CHROME = stringPreferencesKey("map_chrome_layout")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -74,7 +75,8 @@ class SettingsRepository(private val context: Context) {
             largeNumbers = prefs[Keys.LARGE_NUMBERS] ?: false,
             libraryFilter = prefs[Keys.LIBRARY_FILTER]?.let {
                 runCatching { RouteLibraryFilter.valueOf(it) }.getOrDefault(RouteLibraryFilter.ALL)
-            } ?: RouteLibraryFilter.ALL
+            } ?: RouteLibraryFilter.ALL,
+            mapChrome = MapChromeLayout.fromStored(prefs[Keys.MAP_CHROME])
         )
     }
 
@@ -105,6 +107,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun setOverlayStrength(value: OverlayStrength) = edit(Keys.OVERLAY_STRENGTH, value.name)
     suspend fun setLargeNumbers(enabled: Boolean) = edit(Keys.LARGE_NUMBERS, enabled)
     suspend fun setLibraryFilter(value: RouteLibraryFilter) = edit(Keys.LIBRARY_FILTER, value.name)
+    suspend fun setMapChrome(value: MapChromeLayout) = edit(Keys.MAP_CHROME, value.name)
 
     private suspend fun edit(key: Preferences.Key<String>, value: String) {
         context.dataStore.edit { it[key] = value }
@@ -132,9 +135,10 @@ data class AppSettings(
     val dataBarSlot2: DataBarMetric = DataBarMetric.ASCENT,
     val dataBarSlot3: DataBarMetric = DataBarMetric.DAYLIGHT,
     val accentTheme: AccentTheme = AccentTheme.ALPINE,
-    val overlayStrength: OverlayStrength = OverlayStrength.MEDIUM,
+    val overlayStrength: OverlayStrength = OverlayStrength.LOW,
     val largeNumbers: Boolean = false,
-    val libraryFilter: RouteLibraryFilter = RouteLibraryFilter.ALL
+    val libraryFilter: RouteLibraryFilter = RouteLibraryFilter.ALL,
+    val mapChrome: MapChromeLayout = MapChromeLayout.EDGE
 ) {
     val accentHex: String get() = accentTheme.hex
 }

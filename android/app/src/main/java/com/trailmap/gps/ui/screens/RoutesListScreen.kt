@@ -47,6 +47,7 @@ import com.trailmap.gps.data.RouteLibraryFilter
 import com.trailmap.gps.data.RouteSource
 import com.trailmap.gps.data.TripPackStatus
 import com.trailmap.gps.ui.theme.Black
+import com.trailmap.gps.ui.theme.LocalAccent
 import com.trailmap.gps.ui.theme.Gutter
 import com.trailmap.gps.ui.theme.MarginEdge
 import com.trailmap.gps.ui.theme.OnSurface
@@ -133,9 +134,9 @@ fun RoutesListScreen(
                     val selected = settings.libraryFilter == filter
                     Surface(
                         onClick = { onFilterChange(filter) },
-                        color = if (selected) com.trailmap.gps.ui.theme.Amber else SurfaceContainer,
+                        color = if (selected) LocalAccent.current else SurfaceContainer,
                         shape = com.trailmap.gps.ui.theme.AlpineShape,
-                        border = BorderStroke(1.dp, if (selected) com.trailmap.gps.ui.theme.Amber else OutlineVariant)
+                        border = BorderStroke(1.dp, if (selected) LocalAccent.current else OutlineVariant)
                     ) {
                         Text(
                             filter.label.uppercase(),
@@ -160,7 +161,7 @@ fun RoutesListScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
                         onClick = onImportClick,
-                        colors = ButtonDefaults.buttonColors(containerColor = com.trailmap.gps.ui.theme.Amber, contentColor = com.trailmap.gps.ui.theme.Canvas),
+                        colors = ButtonDefaults.buttonColors(containerColor = LocalAccent.current, contentColor = com.trailmap.gps.ui.theme.Canvas),
                         shape = com.trailmap.gps.ui.theme.AlpineShape
                     ) {
                         Icon(Icons.Default.FileUpload, contentDescription = null)

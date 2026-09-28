@@ -15,6 +15,18 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0.0"
+        fun secret(name: String): String {
+            val local = rootProject.file("local.properties")
+            if (!local.exists()) return ""
+            val raw = local.readLines()
+                .firstOrNull { it.startsWith("$name=") }
+                ?.substringAfter("=")
+                ?.trim()
+                .orEmpty()
+            return raw.replace("\\", "\\\\").replace("\"", "\\\"")
+        }
+        buildConfigField("String", "NPS_API_KEY", "\"${secret("NPS_API_KEY")}\"")
+        buildConfigField("String", "RIDB_API_KEY", "\"${secret("RIDB_API_KEY")}\"")
     }
 
     buildTypes {
@@ -38,6 +50,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -64,4 +77,5 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)
+    testImplementation("org.json:json:20240303")
 }

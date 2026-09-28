@@ -123,13 +123,15 @@ class DemRepository(context: Context) {
         )
     }
 
-    fun overlayBitmap(mode: TerrainOverlay, lat: Double, lon: Double): Pair<Bitmap, BoundingBox>? {
+    fun overlayBitmap(
+        mode: TerrainOverlay,
+        lat: Double,
+        lon: Double,
+        routePoints: List<TrackPoint> = emptyList()
+    ): Pair<Bitmap, BoundingBox>? {
         if (mode == TerrainOverlay.NONE) return null
         val grid = gridCovering(lat, lon) ?: loadLatest() ?: return null
-        val pixels = TerrainMath.overlayPixels(grid, mode)
-        val bitmap = Bitmap.createBitmap(grid.cols, grid.rows, Bitmap.Config.ARGB_8888)
-        bitmap.setPixels(pixels, 0, grid.cols, 0, 0, grid.cols, grid.rows)
-        return bitmap to grid.bounds
+        return bitmapForGrid(grid, mode, routePoints)
     }
 
     fun overlayBitmapForBounds(mode: TerrainOverlay, bounds: BoundingBox): Pair<Bitmap, BoundingBox>? {
@@ -138,7 +140,20 @@ class DemRepository(context: Context) {
             ?: readIndex().firstOrNull()
             ?: return null
         val grid = load(pack) ?: return null
-        val pixels = TerrainMath.overlayPixels(grid, mode)
+        return bitmapForGrid(grid, mode)
+    }
+
+    private fun bitmapForGrid(
+        grid: DemGrid,
+        mode: TerrainOverlay,
+        routePoints: List<TrackPoint> = emptyList()
+    ): Pair<Bitmap, BoundingBox> {
+        val keepClear = if (routePoints.size >= 2) {
+            TerrainMath.routeClearMask(grid, routePoints.map { it.lat to it.lon })
+        } else {
+            null
+        }
+        val pixels = TerrainMath.overlayPixels(grid, mode, keepClear)
         val bitmap = Bitmap.createBitmap(grid.cols, grid.rows, Bitmap.Config.ARGB_8888)
         bitmap.setPixels(pixels, 0, grid.cols, 0, 0, grid.cols, grid.rows)
         return bitmap to grid.bounds

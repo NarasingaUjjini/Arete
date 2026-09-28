@@ -94,12 +94,14 @@ class TrackingService : Service() {
         _phase.value = RecordingPhase.RECORDING
         _isRecording.value = true
         startForeground(NOTIFICATION_ID, buildNotification("Recording track"))
-        val engine = (application as TrailMapApp).locationEngine
-        engine.acquire(LocationSession.RECORDING)
+        val app = application as TrailMapApp
+        app.locationEngine.acquire(LocationSession.RECORDING)
+        app.positionEngine.start()
         collectJob?.cancel()
         collectJob = scope.launch {
-            engine.state.collect { state ->
-                val update = state.toGpsUpdate() ?: return@collect
+            app.positionEngine.snapshot.collect { snap ->
+                val update = snap.toGpsUpdate() ?: return@collect
+                if (!update.recordable) return@collect
                 if (_phase.value == RecordingPhase.RECORDING) {
                     _trackPoints.value = _trackPoints.value + TrackPoint(
                         lat = update.latitude,

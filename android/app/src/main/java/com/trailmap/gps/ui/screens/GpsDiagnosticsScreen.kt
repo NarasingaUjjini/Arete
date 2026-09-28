@@ -43,6 +43,7 @@ import com.trailmap.gps.ui.components.AlpineSectionLabel
 import com.trailmap.gps.ui.components.qualityColor
 import com.trailmap.gps.ui.components.qualityLabel
 import com.trailmap.gps.ui.theme.Black
+import com.trailmap.gps.ui.theme.LocalAccent
 import com.trailmap.gps.ui.theme.OnSurface
 import com.trailmap.gps.ui.theme.OnSurfaceVariant
 import com.trailmap.gps.ui.theme.TrailGreen
@@ -52,7 +53,8 @@ import com.trailmap.gps.util.FormatUtils
 fun GpsDiagnosticsScreen(
     state: CurrentLocationState,
     settings: AppSettings,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    positionSummary: String = ""
 ) {
     val context = LocalContext.current
     var copied by remember { mutableStateOf<String?>(null) }
@@ -71,7 +73,7 @@ fun GpsDiagnosticsScreen(
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = OnSurface)
             }
-            Text("GPS DIAGNOSTICS", color = com.trailmap.gps.ui.theme.Amber, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            Text("GPS DIAGNOSTICS", color = LocalAccent.current, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
         }
         Column(
             modifier = Modifier
@@ -95,8 +97,11 @@ fun GpsDiagnosticsScreen(
                 },
                 color = OnSurfaceVariant,
                 fontSize = 13.sp,
-                modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
+                modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
             )
+            if (positionSummary.isNotBlank()) {
+                Text(positionSummary, color = OnSurface, fontSize = 13.sp, modifier = Modifier.padding(bottom = 16.dp))
+            }
 
             AlpineSectionLabel("Fix")
             DiagRow("Horizontal accuracy", if (hasFix && state.horizontalAccuracy.isFinite()) "±${state.horizontalAccuracy.toInt()} m" else "—")

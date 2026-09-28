@@ -30,9 +30,6 @@ import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
-import org.maplibre.android.location.LocationComponentActivationOptions
-import org.maplibre.android.location.LocationComponentOptions
-import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
@@ -140,11 +137,9 @@ fun TrailMapView(
             updateInspectPoint(style, inspectPoint)
             updateTerrainOverlay(style, terrainOverlay, terrainOverlayBounds, overlayOpacity)
             updateContours(style, contourGeoJson)
-            try {
-                activateLocationComponent(context, map, style)
-            } catch (_: Exception) {
-                // Battery saver / minimal styles may not support the location component
-            }
+            setupLocationMark(style)
+            updateLocationMark(style, currentLocation)
+            updateUncertainty(style, currentLocation)
             styleLoaded = true
             onMapReady(map)
             reportScale(map)
@@ -330,47 +325,10 @@ fun TrailMapView(
     LaunchedEffect(currentLocation, styleLoaded) {
         if (!styleLoaded) return@LaunchedEffect
         val map = mapRef ?: return@LaunchedEffect
-        val loc = currentLocation
-        val style = map.style
-        if (loc == null) {
-            style?.let { updateUncertainty(it, null) }
-            runCatching { map.locationComponent.isLocationComponentEnabled = false }
-            return@LaunchedEffect
-        }
-        style?.let { updateUncertainty(it, loc) }
-        runCatching {
-            val component = map.locationComponent
-            component.isLocationComponentEnabled = true
-            component.renderMode = if (loc.showPrecisePuck) RenderMode.COMPASS else RenderMode.NORMAL
-            component.forceLocationUpdate(
-                android.location.Location("gps").apply {
-                    latitude = loc.latitude
-                    longitude = loc.longitude
-                    altitude = loc.elevation
-                    accuracy = loc.accuracy
-                    bearing = loc.bearing
-                    speed = loc.speed
-                }
-            )
-        }
+        val style = map.style ?: return@LaunchedEffect
+        updateLocationMark(style, currentLocation)
+        updateUncertainty(style, currentLocation)
     }
-}
-
-@SuppressLint("MissingPermission")
-private fun activateLocationComponent(context: android.content.Context, map: MapLibreMap, style: Style) {
-    val lc = map.locationComponent
-    lc.activateLocationComponent(
-        LocationComponentActivationOptions.builder(context, style)
-            .useDefaultLocationEngine(false)
-            .locationComponentOptions(
-                LocationComponentOptions.builder(context)
-                    .accuracyAlpha(0f)
-                    .build()
-            )
-            .build()
-    )
-    lc.isLocationComponentEnabled = true
-    lc.renderMode = RenderMode.COMPASS
 }
 
 private fun setupContourLayers(style: Style) {
@@ -570,6 +528,37 @@ fun fitBounds(map: MapLibreMap, points: List<TrackPoint>, paddingPx: Int = 120) 
     }
 }
 
+private fun setupLocationMark(style: Style) {
+    if (style.getSource(LOCATION_SOURCE) != null) return
+    style.addSource(GeoJsonSource(LOCATION_SOURCE))
+    style.addLayer(
+        CircleLayer(LOCATION_HALO_LAYER, LOCATION_SOURCE).withProperties(
+            PropertyFactory.circleRadius(14f),
+            PropertyFactory.circleColor(AndroidColor.parseColor("#38BDF8")),
+            PropertyFactory.circleOpacity(0.28f)
+        )
+    )
+    style.addLayer(
+        CircleLayer(LOCATION_LAYER, LOCATION_SOURCE).withProperties(
+            PropertyFactory.circleRadius(7f),
+            PropertyFactory.circleColor(AndroidColor.parseColor("#2563EB")),
+            PropertyFactory.circleStrokeColor(AndroidColor.WHITE),
+            PropertyFactory.circleStrokeWidth(2.5f)
+        )
+    )
+}
+
+private fun updateLocationMark(style: Style, loc: GpsUpdate?) {
+    val source = style.getSource(LOCATION_SOURCE) as? GeoJsonSource ?: return
+    if (loc == null || !loc.latitude.isFinite() || !loc.longitude.isFinite()) {
+        source.setGeoJson(EMPTY_FEATURE_COLLECTION)
+        return
+    }
+    source.setGeoJson(
+        """{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point","coordinates":[${loc.longitude},${loc.latitude}]}}]}"""
+    )
+}
+
 private fun setupUncertainty(style: Style) {
     if (style.getSource(UNCERTAINTY_SOURCE) != null) return
     style.addSource(GeoJsonSource(UNCERTAINTY_SOURCE))
@@ -612,6 +601,9 @@ private fun uncertaintyPolygon(lat: Double, lon: Double, radiusM: Double): Strin
 private const val UNCERTAINTY_SOURCE = "uncertainty-source"
 private const val UNCERTAINTY_FILL = "uncertainty-fill"
 private const val UNCERTAINTY_LINE = "uncertainty-line"
+private const val LOCATION_SOURCE = "location-source"
+private const val LOCATION_LAYER = "location-layer"
+private const val LOCATION_HALO_LAYER = "location-halo"
 private const val ROUTE_SOURCE = "route-source"
 private const val ROUTE_LAYER = "route-layer"
 private const val DRAW_SOURCE = "draw-source"

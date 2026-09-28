@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.trailmap.gps.ui.theme.AlpineShape
-import com.trailmap.gps.ui.theme.Amber
+import com.trailmap.gps.ui.theme.LocalAccent
 import com.trailmap.gps.ui.theme.Canvas
 import com.trailmap.gps.ui.theme.Hairline
 import com.trailmap.gps.ui.theme.InstrumentPod
@@ -41,7 +41,7 @@ fun SaveRouteNameDialog(
         Surface(
             color = InstrumentPod,
             shape = AlpineShape,
-            border = BorderStroke(1.5.dp, Amber)
+            border = BorderStroke(1.5.dp, LocalAccent.current)
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(
@@ -66,11 +66,11 @@ fun SaveRouteNameDialog(
                     singleLine = true,
                     shape = AlpineShape,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Amber,
+                        focusedBorderColor = LocalAccent.current,
                         unfocusedBorderColor = Hairline,
                         focusedTextColor = OnSurface,
                         unfocusedTextColor = OnSurface,
-                        cursorColor = Amber
+                        cursorColor = LocalAccent.current
                     )
                 )
                 Text(

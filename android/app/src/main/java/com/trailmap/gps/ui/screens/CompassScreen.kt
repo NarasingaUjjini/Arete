@@ -33,6 +33,7 @@ import com.trailmap.gps.location.GpsUpdate
 import com.trailmap.gps.ui.NavigationState
 import com.trailmap.gps.ui.components.AlpineSectionLabel
 import com.trailmap.gps.ui.theme.Black
+import com.trailmap.gps.ui.theme.LocalAccent
 import com.trailmap.gps.ui.theme.OnSurface
 import com.trailmap.gps.ui.theme.OnSurfaceVariant
 import com.trailmap.gps.ui.theme.TrailGreen
@@ -46,6 +47,8 @@ fun CompassScreen(
     navState: NavigationState,
     summitBearing: Double?,
     magneticNorth: Boolean,
+    headingMagnetic: Double = 0.0,
+    headingReady: Boolean = false,
     onToggleNorth: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -59,6 +62,11 @@ fun CompassScreen(
     } ?: 0.0
     val courseTrue = navState.course
     val courseShown = if (magneticNorth) (courseTrue - declination + 360.0) % 360.0 else courseTrue
+    val headingShown = if (headingReady) {
+        if (magneticNorth) headingMagnetic else (headingMagnetic + declination + 360.0) % 360.0
+    } else {
+        courseShown
+    }
     val checkShown = if (magneticNorth) (navState.bearing - declination + 360.0) % 360.0 else navState.bearing
     val summitShown = summitBearing?.let {
         if (magneticNorth) (it - declination + 360.0) % 360.0 else it
@@ -75,7 +83,7 @@ fun CompassScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = OnSurface)
             }
             Column(modifier = Modifier.weight(1f)) {
-                Text("COMPASS", color = com.trailmap.gps.ui.theme.Amber, fontWeight = FontWeight.SemiBold)
+                Text("COMPASS", color = LocalAccent.current, fontWeight = FontWeight.SemiBold)
                 Text(
                     if (magneticNorth) "Magnetic north · decl ${FormatUtils.formatBearing(declination)}"
                     else "True north",
@@ -85,7 +93,7 @@ fun CompassScreen(
             }
         }
         CompassDial(
-            course = courseShown,
+            course = headingShown,
             checkpoint = checkShown,
             summit = summitShown,
             modifier = Modifier
@@ -98,12 +106,20 @@ fun CompassScreen(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Reading("CURRENT COURSE", FormatUtils.formatBearing(courseShown))
+            Reading(if (headingReady) "HEADING" else "COURSE", FormatUtils.formatBearing(headingShown))
             Reading("TO ${navState.nextLabel.uppercase().take(10)}", FormatUtils.formatBearing(checkShown))
             Reading("TO SUMMIT", summitShown?.let { FormatUtils.formatBearing(it) } ?: "—")
         }
+        if (headingReady && courseTrue != 0.0) {
+            Text(
+                "GPS course ${FormatUtils.formatBearing(courseShown)} — movement, not the needle.",
+                color = OnSurfaceVariant,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(start = 16.dp, top = 8.dp)
+            )
+        }
         Text(
-            "Course is GPS movement. Bearing is direction to a checkpoint or summit. They are not the same.",
+            "Heading is the phone compass, same source as the map arrow. Bearing is direction to a checkpoint or summit.",
             color = OnSurfaceVariant,
             fontSize = 11.sp,
             modifier = Modifier.padding(16.dp)

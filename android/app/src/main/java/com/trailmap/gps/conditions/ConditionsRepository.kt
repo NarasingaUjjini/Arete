@@ -17,6 +17,7 @@ class ConditionsRepository(context: Context) {
     private val fires = NifcWildfireProvider()
     private val land = PadusLandProvider()
     private val water = HydrographyProvider()
+    private val recreation = RecreationProvider()
     private val cacheDir: File get() = File(app.filesDir, "conditions").also { it.mkdirs() }
 
     val nwsProvider: NwsProvider get() = nws
@@ -72,6 +73,7 @@ class ConditionsRepository(context: Context) {
         val fireList = runCatching { fires.query(focusLat, focusLon) }.getOrDefault(emptyList())
         val landUnit = runCatching { land.identify(focusLat, focusLon) }.getOrNull()
         val waterList = runCatching { water.nearby(focusLat, focusLon) }.getOrDefault(emptyList())
+        val rec = runCatching { recreation.nearby(focusLat, focusLon) }.getOrDefault(RecreationLinks())
         MountainConditions(
             weather = weather.ifEmpty { readCache() },
             daylight = daylight,
@@ -79,6 +81,7 @@ class ConditionsRepository(context: Context) {
             land = landUnit,
             water = waterList,
             avalanche = avalanche,
+            recreation = rec,
             cached = weather.isEmpty() && readCache().isNotEmpty(),
             error = errors.firstOrNull()
         )

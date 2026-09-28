@@ -107,25 +107,43 @@ object TerrainMath {
                 b = (30 + 20 * u).toInt()
             }
         }
-        return argb(180, r.coerceIn(0, 255), g.coerceIn(0, 255), b.coerceIn(0, 255))
+        val alpha = when {
+            slopeDegrees < 12.0 -> 16
+            slopeDegrees < 22.0 -> 34
+            slopeDegrees < 32.0 -> 52
+            else -> 72
+        }
+        return argb(alpha, r.coerceIn(0, 255), g.coerceIn(0, 255), b.coerceIn(0, 255))
     }
 
     fun aspectArgb(aspectDegrees: Double): Int {
         val hue = (aspectDegrees / 360.0)
-        val (r, g, b) = hsv(hue.toFloat(), 0.65f, 0.9f)
-        return argb(160, r, g, b)
+        val (r, g, b) = hsv(hue.toFloat(), 0.42f, 0.82f)
+        return argb(40, r, g, b)
     }
 
-    fun hillshadeArgb(shade: Double, alpha: Int = 140): Int {
+    fun hillshadeArgb(shade: Double, alpha: Int = 70): Int {
         val v = (shade * 255.0).toInt().coerceIn(0, 255)
         return argb(alpha, v, v, v)
     }
 
-    fun overlayPixels(grid: DemGrid, mode: TerrainOverlay): IntArray {
+    fun overlayPixels(
+        grid: DemGrid,
+        mode: TerrainOverlay,
+        keepClear: BooleanArray? = null
+    ): IntArray {
         val out = IntArray(grid.cols * grid.rows)
         for (row in 0 until grid.rows) {
             for (col in 0 until grid.cols) {
                 val idx = row * grid.cols + col
+                if (keepClear != null && idx < keepClear.size && keepClear[idx]) {
+                    out[idx] = 0
+                    continue
+                }
+                if (shouldHatch(mode, row, col)) {
+                    out[idx] = 0
+                    continue
+                }
                 val cell = analyzeCell(grid, row.coerceIn(1, grid.rows - 2), col.coerceIn(1, grid.cols - 2))
                 out[idx] = if (cell == null) 0 else when (mode) {
                     TerrainOverlay.NONE -> 0
@@ -141,6 +159,46 @@ object TerrainMath {
             }
         }
         return out
+    }
+
+    fun routeClearMask(
+        grid: DemGrid,
+        route: List<Pair<Double, Double>>,
+        radiusCells: Int = 2
+    ): BooleanArray {
+        val mask = BooleanArray(grid.cols * grid.rows)
+        if (route.isEmpty() || grid.cols <= 0 || grid.rows <= 0) return mask
+        val samples = ArrayList<Pair<Double, Double>>(route.size * 4)
+        for (i in route.indices) {
+            samples += route[i]
+            if (i == route.lastIndex) continue
+            val a = route[i]
+            val b = route[i + 1]
+            repeat(7) { step ->
+                val t = (step + 1) / 8.0
+                samples += (a.first + (b.first - a.first) * t) to (a.second + (b.second - a.second) * t)
+            }
+        }
+        val radius = radiusCells.coerceAtLeast(1)
+        for ((lat, lon) in samples) {
+            val col = ((lon - grid.minLon) / grid.cellSizeX).toInt()
+            val row = ((grid.maxLat - lat) / grid.cellSizeY).toInt()
+            for (dr in -radius..radius) {
+                for (dc in -radius..radius) {
+                    val r = row + dr
+                    val c = col + dc
+                    if (r in 0 until grid.rows && c in 0 until grid.cols) {
+                        mask[r * grid.cols + c] = true
+                    }
+                }
+            }
+        }
+        return mask
+    }
+
+    private fun shouldHatch(mode: TerrainOverlay, row: Int, col: Int): Boolean {
+        if (mode != TerrainOverlay.SLOPE && mode != TerrainOverlay.ASPECT) return false
+        return (row + col) % 2 != 0
     }
 
     fun argb(a: Int, r: Int, g: Int, b: Int): Int =

@@ -30,7 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.trailmap.gps.ui.screens.BottomTab
-import com.trailmap.gps.ui.theme.Amber
+import com.trailmap.gps.ui.theme.LocalAccent
 import com.trailmap.gps.ui.theme.Hairline
 import com.trailmap.gps.ui.theme.HazardRed
 import com.trailmap.gps.ui.theme.InstrumentBay
@@ -71,7 +71,7 @@ fun AlpineBottomNav(
                     selected = selectedTab == BottomTab.RECORD || isRecording,
                     tint = when {
                         isRecording -> HazardRed
-                        selectedTab == BottomTab.RECORD -> Amber
+                        selectedTab == BottomTab.RECORD -> LocalAccent.current
                         else -> OnSurfaceVariant
                     },
                     onClick = { onTabSelected(BottomTab.RECORD) }
@@ -93,7 +93,7 @@ private fun AlpineNavItem(
     label: String,
     icon: ImageVector,
     selected: Boolean,
-    tint: Color = if (selected) Amber else OnSurfaceVariant,
+    tint: Color = if (selected) LocalAccent.current else OnSurfaceVariant,
     onClick: () -> Unit
 ) {
     Surface(onClick = onClick, color = Color.Transparent, modifier = Modifier.size(TouchTarget)) {

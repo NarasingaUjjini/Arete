@@ -45,6 +45,7 @@ import com.trailmap.gps.ui.components.AlpineSourceBadge
 import com.trailmap.gps.ui.components.AlpineSubHeader
 import com.trailmap.gps.ui.components.ElevationProfile
 import com.trailmap.gps.ui.theme.Black
+import com.trailmap.gps.ui.theme.LocalAccent
 import com.trailmap.gps.ui.theme.Gutter
 import com.trailmap.gps.ui.theme.MarginEdge
 import com.trailmap.gps.ui.theme.OnSurface
@@ -176,7 +177,7 @@ private fun SurfaceUploadCard(onBrowseFiles: () -> Unit) {
                 modifier = Modifier.size(64.dp).background(SurfaceContainerLowest, com.trailmap.gps.ui.theme.AlpineShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.UploadFile, contentDescription = null, tint = com.trailmap.gps.ui.theme.Amber, modifier = Modifier.size(32.dp))
+                Icon(Icons.Default.UploadFile, contentDescription = null, tint = LocalAccent.current, modifier = Modifier.size(32.dp))
             }
             Spacer(modifier = Modifier.height(24.dp))
             Text("Import Route Data", color = OnSurface, fontSize = 20.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
@@ -194,17 +195,17 @@ private fun SurfaceUploadCard(onBrowseFiles: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().height(TouchTarget),
                 color = Color.Transparent,
                 shape = com.trailmap.gps.ui.theme.AlpineShape,
-                border = BorderStroke(1.dp, com.trailmap.gps.ui.theme.Amber)
+                border = BorderStroke(1.dp, LocalAccent.current)
             ) {
                 Row(
                     modifier = Modifier.fillMaxSize(),
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Search, contentDescription = null, tint = com.trailmap.gps.ui.theme.Amber, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Search, contentDescription = null, tint = LocalAccent.current, modifier = Modifier.size(18.dp))
                     Text(
                         "BROWSE FILES",
-                        color = com.trailmap.gps.ui.theme.Amber,
+                        color = LocalAccent.current,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = 1.sp,

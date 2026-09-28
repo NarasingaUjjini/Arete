@@ -81,6 +81,7 @@ import com.trailmap.gps.ui.components.RouteProgressBar
 import com.trailmap.gps.ui.components.StatBlock
 
 import com.trailmap.gps.ui.theme.Black
+import com.trailmap.gps.ui.theme.LocalAccent
 
 import com.trailmap.gps.ui.theme.OnSurface
 
@@ -238,7 +239,12 @@ fun NavigationScreen(
 
                     )
 
-                    GpsStatusChip(state = locationState, onClick = onGpsClick)
+                    GpsStatusChip(
+                        state = locationState,
+                        onClick = onGpsClick,
+                        integrityLabel = location?.integrityLabel.orEmpty(),
+                        uncertaintyLabel = location?.let { "±${it.accuracy.toInt()}m" }.orEmpty()
+                    )
 
                     Text(
                         "SOS",
@@ -251,7 +257,7 @@ fun NavigationScreen(
                     )
                     Text(
                         "CMP",
-                        color = com.trailmap.gps.ui.theme.Amber,
+                        color = LocalAccent.current,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier
@@ -468,7 +474,7 @@ private fun BatterySaverView(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("ARETE", color = com.trailmap.gps.ui.theme.Amber, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+            Text("ARETE", color = LocalAccent.current, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
             Text("NAVIGATION", color = OnSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             Spacer(modifier = Modifier.height(28.dp))
             Text(
@@ -497,7 +503,7 @@ private fun BatterySaverView(
                 Text("OFF ROUTE", color = OnSurface, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp))
             }
             Spacer(modifier = Modifier.height(28.dp))
-            Text("TAP FOR MAP", color = com.trailmap.gps.ui.theme.Amber, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            Text("TAP FOR MAP", color = LocalAccent.current, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         }
     }
 }

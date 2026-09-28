@@ -24,6 +24,7 @@ import android.view.WindowManager
 import com.trailmap.gps.data.RouteEntity
 import com.trailmap.gps.ui.screens.CompassScreen
 import com.trailmap.gps.ui.screens.ConditionsScreen
+import com.trailmap.gps.ui.screens.RecInfoScreen
 import com.trailmap.gps.ui.screens.EmergencyScreen
 import com.trailmap.gps.ui.screens.GpsDiagnosticsScreen
 import com.trailmap.gps.ui.screens.ObjectiveScreen
@@ -37,6 +38,7 @@ import com.trailmap.gps.ui.screens.TripPackScreen
 import com.trailmap.gps.ui.screens.RecordingScreen
 import com.trailmap.gps.ui.screens.RouteDetailScreen
 import com.trailmap.gps.ui.screens.RoutesListScreen
+import com.trailmap.gps.ui.screens.OfflineDownloadScreen
 import com.trailmap.gps.ui.screens.SettingsScreen
 import com.trailmap.gps.ui.screens.BottomTab
 import com.trailmap.gps.location.TrackingService
@@ -53,10 +55,12 @@ sealed class AppScreen {
     data class ImportPreview(val fileName: String) : AppScreen()
     data class Navigation(val routeId: Long) : AppScreen()
     data class OfflineDownload(val routeId: Long) : AppScreen()
+    data object MapAreaDownload : AppScreen()
     data class RouteDetail(val routeId: Long) : AppScreen()
     data object GpsDiagnostics : AppScreen()
     data object Terrain3d : AppScreen()
     data object Conditions : AppScreen()
+    data object RecInfo : AppScreen()
     data object Emergency : AppScreen()
     data object Compass : AppScreen()
     data object Objective : AppScreen()
@@ -108,13 +112,21 @@ fun TrailMapAppContent(
     val forcedOffline by viewModel.forcedOffline.collectAsState()
     val conditions by viewModel.conditions.collectAsState()
     val conditionsLoading by viewModel.conditionsLoading.collectAsState()
+    val recInfo by viewModel.recInfo.collectAsState()
+    val recInfoLoading by viewModel.recInfoLoading.collectAsState()
     val magneticNorth by viewModel.magneticNorth.collectAsState()
+    val deviceHeading by viewModel.deviceHeading.collectAsState()
+    val position by viewModel.position.collectAsState()
+    val activeMapTool by viewModel.activeMapTool.collectAsState()
     val returnByMinutes by viewModel.returnByMinutes.collectAsState()
     val overlayPair = remember(terrainOverlayMode, demDownload.lastPack?.id, selectedRoute?.id) {
         viewModel.overlayBitmap()
     }
-    val contourGeoJson = remember(settings.contoursEnabled, demDownload.lastPack?.id, selectedRoute?.id) {
-        viewModel.contourGeoJson()
+    val contourProvider = remember(settings.contoursEnabled, demDownload.lastPack?.id, selectedRoute?.id) {
+        { maxDim: Int -> viewModel.contourGeoJson(maxDim) }
+    }
+    val contourGeoJson = remember(contourProvider) {
+        contourProvider(com.trailmap.gps.terrain.ContourGenerator.DEFAULT_MAX_DIM)
     }
 
     val orientationTrigger by viewModel.orientationTrigger.collectAsState()
@@ -122,6 +134,7 @@ fun TrailMapAppContent(
     var pendingDeleteId by remember { mutableStateOf<Long?>(null) }
     var currentScreen by remember { mutableStateOf<AppScreen>(AppScreen.Map) }
     var diagnosticsReturn by remember { mutableStateOf<AppScreen>(AppScreen.Map) }
+    var downloadReturn by remember { mutableStateOf<AppScreen>(AppScreen.Map) }
     var showLayerPicker by remember { mutableStateOf(false) }
     var navRoute by remember { mutableStateOf<RouteEntity?>(null) }
     var navStartTime by remember { mutableLongStateOf(0L) }
@@ -136,6 +149,11 @@ fun TrailMapAppContent(
     }
 
     val view = LocalView.current
+    LaunchedEffect(activeMapTool, currentScreen, settings.northUp) {
+        val compassOpen = currentScreen is AppScreen.Compass ||
+            activeMapTool == com.trailmap.gps.ui.maptools.MapTool.COMPASS
+        viewModel.setHeadingWanted(compassOpen || !settings.northUp)
+    }
     LaunchedEffect(isNavigating, isRecording, settings.keepScreenOn) {
         val window = (view.context as? android.app.Activity)?.window
         if (window != null) {
@@ -165,6 +183,7 @@ fun TrailMapAppContent(
         }
     }
 
+    com.trailmap.gps.ui.theme.TrailMapTheme(accentHex = settings.accentHex) {
     Box(modifier = Modifier.fillMaxSize()) {
         when (val screen = currentScreen) {
             AppScreen.Map -> {
@@ -183,6 +202,16 @@ fun TrailMapAppContent(
                     orientationTrigger = orientationTrigger,
                     onImportClick = { currentScreen = AppScreen.ImportPicker },
                     onOpenConditions = { currentScreen = AppScreen.Conditions },
+                    onOpenRecInfo = {
+                        viewModel.refreshRecInfo()
+                        currentScreen = AppScreen.RecInfo
+                    },
+                    onDownloadArea = {
+                        downloadReturn = AppScreen.Map
+                        currentScreen = AppScreen.MapAreaDownload
+                    },
+                    terrainOverlayRequested = terrainOverlayMode != com.trailmap.gps.terrain.TerrainOverlay.NONE,
+                    hasLocalTerrainOverlay = overlayPair != null,
                     onTabSelected = { tab ->
                         when (tab) {
                             BottomTab.ROUTES -> currentScreen = AppScreen.Routes
@@ -193,10 +222,12 @@ fun TrailMapAppContent(
                     },
                     onRecenter = viewModel::recenter,
                     onToggleNorthUp = viewModel::toggleNorthUp,
+                    onAlignNorth = viewModel::alignNorth,
                     onToggleFullscreen = viewModel::toggleFullscreen,
                     onToggleDrawRoute = viewModel::toggleDrawRoute,
                     onSaveDrawnRoute = viewModel::requestSaveDrawnRoute,
                     contourGeoJson = contourGeoJson,
+                    contourProvider = contourProvider,
                     dataBarInputs = com.trailmap.gps.ui.components.DataBarInputs(
                         location = currentLocation,
                         locationState = locationState,
@@ -229,7 +260,29 @@ fun TrailMapAppContent(
                     terrainOverlay = overlayPair?.first,
                     terrainOverlayBounds = overlayPair?.second,
                     onInspect = viewModel::inspectTerrain,
-                    onClearInspection = viewModel::clearInspection
+                    onClearInspection = viewModel::clearInspection,
+                    activeTool = activeMapTool,
+                    onToggleTool = viewModel::toggleMapTool,
+                    onDismissTool = viewModel::dismissMapTool,
+                    navState = selectedRoute?.let { viewModel.navigationState(it, currentLocation) }
+                        ?: com.trailmap.gps.ui.NavigationState(),
+                    summitBearing = selectedRoute?.let { route ->
+                        val summit = viewModel.summitWaypoint(route)
+                        val loc = currentLocation
+                        if (summit != null && loc != null) {
+                            com.trailmap.gps.geo.GeoMath.initialBearingDegrees(
+                                loc.latitude, loc.longitude, summit.lat, summit.lon
+                            )
+                        } else null
+                    },
+                    magneticNorth = magneticNorth,
+                    deviceHeadingMagnetic = deviceHeading.magneticDegrees,
+                    deviceHeadingReady = deviceHeading.ready,
+                    onToggleMagneticNorth = viewModel::toggleMagneticNorth,
+                    onMapChromeChange = viewModel::updateMapChrome,
+                    terrainOverlayMode = terrainOverlayMode,
+                    onTerrainOverlayChange = viewModel::setTerrainOverlay,
+                    hasLocalDem = viewModel.hasLocalDem()
                 )
             }
             AppScreen.ImportPicker -> {
@@ -298,7 +351,10 @@ fun TrailMapAppContent(
                     onPowerProfileChange = viewModel::updatePowerProfile,
                     onKeepScreenOnChange = viewModel::updateKeepScreenOn,
                     onOffRouteCorridorChange = viewModel::updateOffRouteCorridor,
-                    onDownloadGnss = viewModel::refreshGnssAssistance,
+                    onDownloadMapArea = {
+                        downloadReturn = AppScreen.Settings
+                        currentScreen = AppScreen.MapAreaDownload
+                    },
                     onOpenGpsDiagnostics = {
                         diagnosticsReturn = AppScreen.Settings
                         currentScreen = AppScreen.GpsDiagnostics
@@ -312,6 +368,7 @@ fun TrailMapAppContent(
                     onAccentChange = viewModel::updateAccent,
                     onOverlayStrengthChange = viewModel::updateOverlayStrength,
                     onLargeNumbersChange = viewModel::updateLargeNumbers,
+                    onMapChromeChange = viewModel::updateMapChrome,
                     locationSummary = buildString {
                         append("GPS ")
                         append(locationState.quality.name.lowercase())
@@ -385,6 +442,26 @@ fun TrailMapAppContent(
                         }
                     )
                 }
+            }
+            AppScreen.MapAreaDownload -> {
+                OfflineDownloadScreen(
+                    route = selectedRoute,
+                    points = selectedRoute?.let { viewModel.getRoutePoints(it) }.orEmpty(),
+                    settings = settings,
+                    downloadState = offlineState,
+                    layerLabels = viewModel.offlineLayerLabels(),
+                    gnssRefreshing = gnssRefreshing,
+                    gnssMessage = gnssMessage,
+                    onBack = { currentScreen = downloadReturn },
+                    onDownload = { bounds, zoom, includeDem ->
+                        viewModel.downloadArea(bounds, zoom, includeDem, selectedRoute?.id)
+                    },
+                    estimateTiles = { bounds, zoom -> viewModel.estimateOfflineTiles(bounds, zoom) },
+                    demProgress = demDownload.progress,
+                    demError = demDownload.error,
+                    demDownloading = demDownload.isDownloading,
+                    currentLocation = currentLocation
+                )
             }
             is AppScreen.OfflineDownload -> {
                 selectedRoute?.let { route ->
@@ -463,7 +540,12 @@ fun TrailMapAppContent(
                 GpsDiagnosticsScreen(
                     state = locationState,
                     settings = settings,
-                    onBack = { currentScreen = diagnosticsReturn }
+                    onBack = { currentScreen = diagnosticsReturn },
+                    positionSummary = if (position.hasPosition) {
+                        "${position.integrity.name} · ±${position.horizontalUncertaintyM.toInt()} m · ${position.reason}"
+                    } else {
+                        position.reason
+                    }
                 )
             }
             AppScreen.Terrain3d -> {
@@ -492,6 +574,15 @@ fun TrailMapAppContent(
                     onRefresh = viewModel::refreshConditions
                 )
             }
+            AppScreen.RecInfo -> {
+                RecInfoScreen(
+                    snapshot = recInfo,
+                    loading = recInfoLoading,
+                    hasFix = currentLocation != null,
+                    onBack = { currentScreen = AppScreen.Map },
+                    onRefresh = viewModel::refreshRecInfo
+                )
+            }
             AppScreen.Emergency -> {
                 val route = selectedRoute ?: navRoute
                 EmergencyScreen(
@@ -500,6 +591,7 @@ fun TrailMapAppContent(
                     settings = settings,
                     backtrackMeters = route?.let { viewModel.backtrackMeters(it) } ?: 0.0,
                     remainingToTrailheadMeters = route?.let { viewModel.remainingToTrailhead(it, currentLocation) } ?: 0.0,
+                    position = position,
                     onBack = {
                         currentScreen = if (isNavigating && navRoute != null) {
                             AppScreen.Navigation(navRoute!!.id)
@@ -517,6 +609,8 @@ fun TrailMapAppContent(
                     navState = navState,
                     summitBearing = route?.let { viewModel.summitBearing(it, currentLocation) },
                     magneticNorth = magneticNorth,
+                    headingMagnetic = deviceHeading.magneticDegrees,
+                    headingReady = deviceHeading.ready,
                     onToggleNorth = viewModel::toggleMagneticNorth,
                     onBack = {
                         currentScreen = if (isNavigating && navRoute != null) {
@@ -614,5 +708,6 @@ fun TrailMapAppContent(
                 }
             )
         }
+    }
     }
 }

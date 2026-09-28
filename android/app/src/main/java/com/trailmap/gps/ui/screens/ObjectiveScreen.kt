@@ -32,6 +32,7 @@ import com.trailmap.gps.ui.components.AlpineOutlineButton
 import com.trailmap.gps.ui.components.AlpinePrimaryButton
 import com.trailmap.gps.ui.components.AlpineSectionLabel
 import com.trailmap.gps.ui.theme.Black
+import com.trailmap.gps.ui.theme.LocalAccent
 import com.trailmap.gps.ui.theme.OnSurface
 import com.trailmap.gps.ui.theme.OnSurfaceVariant
 import com.trailmap.gps.ui.theme.TrailGreen
@@ -67,7 +68,7 @@ fun ObjectiveScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = OnSurface)
             }
             Column {
-                Text("OBJECTIVE", color = com.trailmap.gps.ui.theme.Amber, fontWeight = FontWeight.SemiBold)
+                Text("OBJECTIVE", color = LocalAccent.current, fontWeight = FontWeight.SemiBold)
                 Text(routeName, color = OnSurfaceVariant, fontSize = 12.sp)
             }
         }

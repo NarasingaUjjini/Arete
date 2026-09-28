@@ -84,10 +84,18 @@ data class AvalancheSource(
     val note: String = "Official forecast only. Arete does not rate avalanche danger."
 )
 
+data class RecreationPlace(
+    val name: String,
+    val type: String,
+    val url: String,
+    val distanceNote: String = ""
+)
+
 data class RecreationLinks(
     val npsFindParkUrl: String = "https://www.nps.gov/findapark/index.htm",
     val recreationGovUrl: String = "https://www.recreation.gov/",
-    val note: String = "No NPS/RIDB API key is embedded. Use official public pages."
+    val nearby: List<RecreationPlace> = emptyList(),
+    val note: String = "Official park and recreation listings."
 )
 
 data class MountainConditions(

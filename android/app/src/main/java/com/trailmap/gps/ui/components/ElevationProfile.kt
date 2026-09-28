@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.trailmap.gps.data.TrackPoint
 import com.trailmap.gps.geo.ElevationStats
+import com.trailmap.gps.ui.theme.LocalAccent
 import com.trailmap.gps.ui.theme.OnSurfaceVariant
 import com.trailmap.gps.ui.theme.OutlineVariant
 import com.trailmap.gps.ui.theme.SurfaceContainer
@@ -41,7 +42,7 @@ fun ElevationProfile(
     rangeStartMeters: Double? = null,
     rangeEndMeters: Double? = null,
     demPoints: List<TrackPoint> = emptyList(),
-    lineColor: Color = com.trailmap.gps.ui.theme.Amber,
+    lineColor: Color = LocalAccent.current,
     showContainer: Boolean = true,
     label: String = "ELEVATION PROFILE",
     onScrub: ((distanceMeters: Double, point: TrackPoint) -> Unit)? = null

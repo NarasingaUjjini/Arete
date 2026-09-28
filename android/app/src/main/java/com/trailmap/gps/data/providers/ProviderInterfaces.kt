@@ -84,7 +84,7 @@ object ProviderRegistry {
         UsgsBasemapProvider("arete-topo", "Arete Topo", "USGS The National Map", offline = true),
         UsgsBasemapProvider("usgs-topo", "USGS Topo", "USGS The National Map", offline = true),
         UsgsBasemapProvider("usgs-imagery", "USGS Imagery", "USGS Imagery", offline = false),
-        UsgsBasemapProvider("usgs-historical", "USGS Historical Topo", "USGS HTMC / topoView", offline = false)
+        UsgsBasemapProvider("usgs-historical", "Historical / classic USGS", "USGS Topo + USA Topo Maps", offline = false)
     )
     val terrainProviders: List<TerrainProvider> = listOf(com.trailmap.gps.terrain.Usgs3depProvider())
     val conditionsProviders: List<ConditionsProvider> = listOf(

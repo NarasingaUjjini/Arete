@@ -210,7 +210,7 @@ fun RouteDetailScreen(
                     when {
                         demDownloading -> "Downloading USGS 3DEP…"
                         hasLocalDem -> "Local 3DEP loaded · cyan line is terrain, green is the route file"
-                        else -> "No local DEM — download terrain for slope, aspect, and 3D"
+                        else -> "No local 3DEP in this area — slope, aspect, contours, and 3D only work after you download terrain for a map box"
                     },
                     color = if (hasLocalDem) TrailGreen else OnSurfaceVariant,
                     fontSize = 11.sp,

@@ -20,7 +20,7 @@ enum class MapLayer {
             ARETE_TOPO -> "Arete Topo (USGS)"
             USGS_TOPO -> "USGS Topo"
             IMAGERY -> "USGS Imagery"
-            HISTORICAL -> "Historical USGS topo"
+            HISTORICAL -> "Historical / classic USGS"
             OPENTOPO -> "OpenTopoMap (online)"
             SATELLITE -> "Esri satellite (online)"
             OSM -> "OpenStreetMap (online)"

@@ -43,7 +43,8 @@ enum class TileSource(
     USGS_TOPO("usgs_topo", "USGS Topo", 16),
     USGS_SHADE("usgs_shade", "USGS Relief", 15),
     USGS_IMAGERY("usgs_imagery", "USGS Imagery", 16),
-    USGS_HISTORICAL("usgs_historical", "USGS Historical", 16);
+    USGS_HISTORICAL("usgs_historical", "USGS Historical", 16),
+    USA_TOPO("usa_topo", "Classic USGS", 15);
 
     fun remoteUrl(z: Int, x: Int, y: Int): String = when (this) {
         OPENTOPO -> {
@@ -63,6 +64,8 @@ enum class TileSource(
             "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/$z/$y/$x"
         USGS_HISTORICAL ->
             "https://ngmdb.usgs.gov/arcgis/rest/services/topoview/ustOverlayAuto/MapServer/tile/$z/$y/$x"
+        USA_TOPO ->
+            "https://server.arcgisonline.com/ArcGIS/rest/services/USA_Topo_Maps/MapServer/tile/$z/$y/$x"
     }
 
     companion object {
@@ -100,6 +103,7 @@ enum class TileSource(
                 path.contains("USGSShadedReliefOnly/MapServer/tile/") -> parseEsriTile(path, USGS_SHADE)
                 path.contains("USGSImageryOnly/MapServer/tile/") -> parseEsriTile(path, USGS_IMAGERY)
                 path.contains("topoview/ustOverlayAuto/MapServer/tile/") -> parseEsriTile(path, USGS_HISTORICAL)
+                path.contains("USA_Topo_Maps/MapServer/tile/") -> parseEsriTile(path, USA_TOPO)
                 else -> null
             }
         }
@@ -153,7 +157,7 @@ class OfflineTileManager(private val context: Context) {
         }
         if (!canUseNetwork()) {
             val fallback = when (parsed.source) {
-                TileSource.OPENTOPO, TileSource.OSM, TileSource.USGS_HISTORICAL ->
+                TileSource.OPENTOPO, TileSource.OSM, TileSource.USGS_HISTORICAL, TileSource.USA_TOPO ->
                     tileFile(TileSource.USGS_TOPO, parsed.z, parsed.x, parsed.y)
                 TileSource.HILLSHADE -> tileFile(TileSource.USGS_SHADE, parsed.z, parsed.x, parsed.y)
                 else -> null
@@ -175,7 +179,7 @@ class OfflineTileManager(private val context: Context) {
             }
             MapLayer.USGS_TOPO -> sources += TileSource.USGS_TOPO
             MapLayer.IMAGERY -> sources += TileSource.USGS_IMAGERY
-            MapLayer.HISTORICAL -> sources += TileSource.USGS_HISTORICAL
+            MapLayer.HISTORICAL -> sources += TileSource.USGS_TOPO
             MapLayer.OPENTOPO, MapLayer.SATELLITE, MapLayer.OSM ->
                 sources += TileSource.USGS_TOPO
         }

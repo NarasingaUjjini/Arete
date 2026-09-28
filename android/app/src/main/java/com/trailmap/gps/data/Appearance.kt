@@ -75,9 +75,9 @@ enum class AccentTheme(val hex: String, val label: String) {
 }
 
 enum class OverlayStrength(val opacity: Float, val label: String) {
-    LOW(0.28f, "Low"),
-    MEDIUM(0.48f, "Medium"),
-    HIGH(0.66f, "High")
+    LOW(0.14f, "Low"),
+    MEDIUM(0.22f, "Medium"),
+    HIGH(0.32f, "High")
 }
 
 enum class RouteLibraryFilter(val label: String) {
@@ -92,4 +92,15 @@ enum class DrawTool {
     NONE,
     ROUTE,
     WAYPOINT
+}
+
+enum class MapChromeLayout(val title: String, val summary: String) {
+    RAIL("Instrument rail", "Tools stay on the left. Always visible."),
+    SPATIAL("Spatial", "I and ··· stay on the map. I fans the tools."),
+    EDGE("Edge instrument", "Ticks on the rim. The map stays open.");
+
+    companion object {
+        fun fromStored(raw: String?): MapChromeLayout =
+            entries.firstOrNull { it.name == raw } ?: EDGE
+    }
 }

@@ -34,10 +34,12 @@ import com.trailmap.gps.data.CoordinateFormat
 import com.trailmap.gps.geo.Coordinates
 import com.trailmap.gps.location.CurrentLocationState
 import com.trailmap.gps.location.GpsUpdate
+import com.trailmap.gps.location.PositionSnapshot
 import com.trailmap.gps.ui.components.AlpineOutlineButton
 import com.trailmap.gps.ui.components.AlpinePrimaryButton
 import com.trailmap.gps.ui.components.AlpineSectionLabel
 import com.trailmap.gps.ui.theme.Black
+import com.trailmap.gps.ui.theme.LocalAccent
 import com.trailmap.gps.ui.theme.OnSurface
 import com.trailmap.gps.ui.theme.OnSurfaceVariant
 import com.trailmap.gps.ui.theme.TrailGreen
@@ -50,12 +52,13 @@ fun EmergencyScreen(
     settings: AppSettings,
     backtrackMeters: Double,
     remainingToTrailheadMeters: Double,
+    position: PositionSnapshot? = null,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val lat = location?.latitude ?: locationState.lastGoodLatitude
     val lon = location?.longitude ?: locationState.lastGoodLongitude
-    val text = buildShareText(lat, lon, location, locationState, settings, batteryPct(context))
+    val text = buildShareText(lat, lon, location, locationState, settings, batteryPct(context), position)
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -68,7 +71,7 @@ fun EmergencyScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = OnSurface)
             }
             Column {
-                Text("EMERGENCY REFERENCE", color = com.trailmap.gps.ui.theme.Amber, fontWeight = FontWeight.SemiBold)
+                Text("EMERGENCY REFERENCE", color = LocalAccent.current, fontWeight = FontWeight.SemiBold)
                 Text("Positioning tool — not a beacon", color = OnSurfaceVariant, fontSize = 11.sp)
             }
         }
@@ -90,6 +93,18 @@ fun EmergencyScreen(
             }
             location?.let {
                 CoordLine("ELEVATION", FormatUtils.formatElevation(it.elevation, settings.elevationUnit))
+            }
+            position?.let {
+                CoordLine("UNCERTAINTY", if (it.horizontalUncertaintyM.isFinite()) "±${it.horizontalUncertaintyM.toInt()} m" else "—")
+                CoordLine("INTEGRITY", "${it.integrity.name} · ${it.reason}")
+                CoordLine(
+                    "LAST VERIFIED",
+                    if (it.anchor == null || it.verifiedAgeMs > Long.MAX_VALUE / 4) "—" else "${it.verifiedAgeMs / 1000}s ago"
+                )
+                it.anchor?.let { anchor ->
+                    CoordLine("VERIFIED POSITION", Coordinates.decimal(anchor.latitude, anchor.longitude))
+                }
+            } ?: location?.let {
                 CoordLine("GPS ACCURACY", "±${it.accuracy.toInt()} m")
             }
             CoordLine("FIX AGE", if (locationState.ageMs > 0) "${locationState.ageMs / 1000}s" else "—")
@@ -155,9 +170,10 @@ private fun buildShareText(
     location: GpsUpdate?,
     state: CurrentLocationState,
     settings: AppSettings,
-    battery: Int
+    battery: Int,
+    position: PositionSnapshot? = null
 ): String {
-    if (lat == null || lon == null) return "Arete: no usable GPS position."
+    if (lat == null || lon == null) return "Arete: no usable GPS position. Not a beacon."
     return buildString {
         appendLine("Arete position (not a beacon)")
         appendLine(Coordinates.decimal(lat, lon))
@@ -165,7 +181,14 @@ private fun buildShareText(
         appendLine(Coordinates.mgrs(lat, lon))
         location?.let {
             appendLine("Elev ${FormatUtils.formatElevation(it.elevation, settings.elevationUnit)}")
-            appendLine("±${it.accuracy.toInt()} m")
+        }
+        position?.let {
+            if (it.horizontalUncertaintyM.isFinite()) appendLine("±${it.horizontalUncertaintyM.toInt()} m")
+            appendLine("${it.integrity.name} · ${it.reason}")
+            if (it.anchor != null && it.verifiedAgeMs < Long.MAX_VALUE / 4) {
+                appendLine("Last verified ${it.verifiedAgeMs / 1000}s ago")
+                appendLine(Coordinates.decimal(it.anchor.latitude, it.anchor.longitude))
+            }
         }
         appendLine("Fix age ${state.ageMs / 1000}s · battery $battery%")
         appendLine(Coordinates.format(lat, lon, CoordinateFormat.DMS))

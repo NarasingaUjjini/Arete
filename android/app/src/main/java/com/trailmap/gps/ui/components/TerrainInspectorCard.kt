@@ -18,7 +18,7 @@ import com.trailmap.gps.data.AppSettings
 import com.trailmap.gps.geo.Coordinates
 import com.trailmap.gps.terrain.TerrainInspection
 import com.trailmap.gps.ui.theme.AlpineShape
-import com.trailmap.gps.ui.theme.Amber
+import com.trailmap.gps.ui.theme.LocalAccent
 import com.trailmap.gps.ui.theme.Hairline
 import com.trailmap.gps.ui.theme.InstrumentPod
 import com.trailmap.gps.ui.theme.JetBrainsMono
@@ -45,7 +45,7 @@ fun TerrainInspectorCard(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
                     "TERRAIN INSPECT",
-                    color = Amber,
+                    color = LocalAccent.current,
                     fontFamily = JetBrainsMono,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
@@ -118,7 +118,7 @@ fun TerrainInspectorCard(
                 )
             }
             Text(
-                "DEM is 3DEP surface, not GPS altitude.",
+                "DEM is 3DEP surface, not GPS altitude. Slope/aspect/3D only exist inside a downloaded terrain box.",
                 color = TelemetryMuted,
                 fontFamily = JetBrainsMono,
                 fontSize = 9.sp,

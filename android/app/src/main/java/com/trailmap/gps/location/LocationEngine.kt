@@ -78,6 +78,7 @@ class LocationEngine(private val context: Context) {
     private var powerProfile = PowerProfile.BALANCED
     private var gnssCallback: GnssStatus.Callback? = null
     private val sessions = mutableSetOf<LocationSession>()
+    private var appliedIntervalMs: Long? = null
 
     private val listener = LocationListener { location -> onLocation(location) }
 
@@ -101,6 +102,12 @@ class LocationEngine(private val context: Context) {
         if (sessions.isEmpty()) stop() else start(activeSession())
     }
 
+    fun setDesiredInterval(ms: Long?) {
+        if (appliedIntervalMs == ms) return
+        appliedIntervalMs = ms
+        if (sessions.isNotEmpty()) start(activeSession())
+    }
+
     private fun activeSession(): LocationSession = when {
         LocationSession.RECORDING in sessions -> LocationSession.RECORDING
         LocationSession.NAVIGATION in sessions -> LocationSession.NAVIGATION
@@ -113,7 +120,7 @@ class LocationEngine(private val context: Context) {
             locationManager.removeUpdates(listener)
         } catch (_: Exception) {
         }
-        val interval = when (session) {
+        val interval = appliedIntervalMs ?: when (session) {
             LocationSession.BROWSING -> when (powerProfile) {
                 PowerProfile.BATTERY -> 10_000L
                 PowerProfile.BALANCED -> 4_000L

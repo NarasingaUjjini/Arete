@@ -28,6 +28,11 @@ class Phase7SettingsTest {
     }
 
     @Test
+    fun mapChromeDefaultsToEdge() {
+        assertEquals(MapChromeLayout.EDGE, MapChromeLayout.fromStored(null))
+        assertEquals(3, MapChromeLayout.entries.size)
+    }
+
     fun accentDoesNotReuseReservedSafetyHex() {
         val reserved = setOf("#FFB4AB", "#D4A017", "#E07A3D")
         AccentTheme.entries.forEach { theme ->

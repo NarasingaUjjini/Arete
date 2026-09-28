@@ -93,7 +93,7 @@ import com.trailmap.gps.ui.theme.OnSurfaceVariant
 import com.trailmap.gps.ui.theme.RedAlert
 import com.trailmap.gps.ui.theme.SectionGap
 import com.trailmap.gps.ui.theme.SurfaceContainerHighest
-import com.trailmap.gps.ui.theme.Amber
+import com.trailmap.gps.ui.theme.LocalAccent
 import com.trailmap.gps.ui.theme.TouchTarget
 import com.trailmap.gps.util.FormatUtils
 
@@ -110,7 +110,7 @@ fun SettingsScreen(
     onPowerProfileChange: (PowerProfile) -> Unit,
     onKeepScreenOnChange: (Boolean) -> Unit,
     onOffRouteCorridorChange: (OffRouteCorridorSetting) -> Unit,
-    onDownloadGnss: () -> Unit,
+    onDownloadMapArea: () -> Unit,
     onOpenGpsDiagnostics: () -> Unit,
     onOpenConditions: () -> Unit = {},
     onDataBarProfileChange: (DataBarProfile) -> Unit = {},
@@ -118,6 +118,7 @@ fun SettingsScreen(
     onAccentChange: (AccentTheme) -> Unit = {},
     onOverlayStrengthChange: (OverlayStrength) -> Unit = {},
     onLargeNumbersChange: (Boolean) -> Unit = {},
+    onMapChromeChange: (com.trailmap.gps.data.MapChromeLayout) -> Unit = {},
     locationSummary: String
 ) {
     Scaffold(
@@ -221,7 +222,7 @@ fun SettingsScreen(
             AlpineSettingsCard {
                 Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Download a map area from a route before you lose signal. GPS assistance speeds up lock with no cell service.",
+                        "Download a map box you pan and scale yourself. That stores USGS tiles and optional 3DEP for that area. GPS assistance is refreshed after the tiles finish.",
                         color = OnSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall
                     )
@@ -234,7 +235,7 @@ fun SettingsScreen(
                     }
                     Text(
                         gnssLabel,
-                        color = if (FormatUtils.isStale(settings.gnssAssistanceUpdatedAt)) OnSurfaceVariant else Amber,
+                        color = if (FormatUtils.isStale(settings.gnssAssistanceUpdatedAt)) OnSurfaceVariant else LocalAccent.current,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -242,8 +243,8 @@ fun SettingsScreen(
                         Text(gnssMessage, color = OnSurfaceVariant, fontSize = 12.sp)
                     }
                     AlpinePrimaryButton(
-                        text = if (gnssRefreshing) "Refreshing GPS…" else "Download GPS data",
-                        onClick = onDownloadGnss,
+                        text = if (gnssRefreshing) "Opening…" else "Download map area",
+                        onClick = onDownloadMapArea,
                         enabled = !gnssRefreshing,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -267,7 +268,7 @@ fun SettingsScreen(
             )
             Text(
                 locationSummary,
-                color = Amber,
+                color = LocalAccent.current,
                 fontSize = 12.sp,
                 modifier = Modifier
                     .padding(top = 8.dp, start = 4.dp)
@@ -293,7 +294,7 @@ fun SettingsScreen(
             )
             Text(
                 "Open conditions",
-                color = Amber,
+                color = LocalAccent.current,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.clickable(onClick = onOpenConditions).padding(start = 4.dp, bottom = 4.dp)
@@ -346,8 +347,31 @@ fun SettingsScreen(
                 )
             }
 
+            AlpineSectionLabel("Map layout", modifier = Modifier.padding(top = SectionGap, bottom = Gutter))
+            Text(
+                "Same tools. Three faces. This only changes how instruments sit on the map.",
+                color = OnSurfaceVariant,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+            )
+            AlpineSettingsCard {
+                com.trailmap.gps.data.MapChromeLayout.entries.forEach { layout ->
+                    AlpineRadioRow(
+                        label = layout.title,
+                        selected = settings.mapChrome == layout,
+                        onClick = { onMapChromeChange(layout) }
+                    )
+                    Text(
+                        layout.summary,
+                        color = OnSurfaceVariant,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp)
+                    )
+                }
+            }
+
             AlpineSectionLabel("Accent (UI / route)", modifier = Modifier.padding(top = SectionGap, bottom = Gutter))
-            Text("Error, warning, GPS, and recording colors stay reserved.", color = OnSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
+            Text("Buttons, titles, selected chips, and the route line follow this color. Error, warning, GPS, and recording colors stay reserved.", color = OnSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
             AlpineSettingsCard {
                 AccentTheme.entries.forEach { theme ->
                     AlpineRadioRow(
@@ -358,6 +382,12 @@ fun SettingsScreen(
                 }
             }
             AlpineSectionLabel("Terrain overlay strength", modifier = Modifier.padding(top = SectionGap, bottom = Gutter))
+            Text(
+                "How hard slope/aspect sit on the map. They only appear over downloaded 3DEP. Low keeps the route visible.",
+                color = OnSurfaceVariant,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+            )
             AlpineSettingsCard {
                 OverlayStrength.entries.forEach { strength ->
                     AlpineRadioRow(
@@ -444,7 +474,7 @@ fun LayerPickerSheet(
             }
         }
         Text(
-            "Historical maps: USGS HTMC / topoView. Not a substitute for a current map.",
+            "Historical / classic USGS uses current USGS Topo underneath plus classic paper-style USA Topo Maps online. HTMC is not a public tile cache. Not a substitute for a current map.",
             color = OnSurfaceVariant,
             fontSize = 11.sp,
             modifier = Modifier.padding(top = 8.dp)
@@ -468,13 +498,19 @@ fun LayerPickerSheet(
                     onCheckedChange = onContoursChange
                 )
                 AlpineCardDivider()
-                Text(
-                    "TERRAIN OVERLAY (local 3DEP)",
-                    color = OnSurfaceVariant,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                )
+            Text(
+                "TERRAIN OVERLAY — local 3DEP only",
+                color = OnSurfaceVariant,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+            )
+            Text(
+                "Slope and aspect paint only where you already downloaded 3DEP. Keep strength Low so the trail stays readable.",
+                color = OnSurfaceVariant,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp)
+            )
                 com.trailmap.gps.terrain.TerrainOverlay.entries.forEach { mode ->
                     AlpineRadioRow(
                         label = when (mode) {
@@ -495,7 +531,7 @@ fun LayerPickerSheet(
             onClick = onDismiss,
             modifier = Modifier.fillMaxWidth().height(44.dp),
             shape = AlpineShape,
-            colors = ButtonDefaults.buttonColors(containerColor = Amber, contentColor = Black)
+            colors = ButtonDefaults.buttonColors(containerColor = LocalAccent.current, contentColor = Black)
         ) {
             Text("DONE", fontWeight = FontWeight.Bold)
         }
@@ -505,7 +541,7 @@ fun LayerPickerSheet(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OfflineDownloadScreen(
-    route: RouteEntity,
+    route: RouteEntity?,
     points: List<TrackPoint>,
     settings: AppSettings,
     downloadState: OfflineDownloadState,
@@ -517,15 +553,22 @@ fun OfflineDownloadScreen(
     estimateTiles: (bounds: DoubleArray, maxZoom: Int) -> Int,
     demProgress: Float = 0f,
     demError: String? = null,
-    demDownloading: Boolean = false
+    demDownloading: Boolean = false,
+    currentLocation: com.trailmap.gps.location.GpsUpdate? = null
 ) {
     var maxZoom by remember { mutableFloatStateOf(15f) }
     var areaPadding by remember { mutableFloatStateOf(0.25f) }
     var includeDem by remember { mutableStateOf(true) }
     var downloadBounds by remember { mutableStateOf<DoubleArray?>(null) }
     val boxInset = (16 + (1f - areaPadding) * 56).dp
-    val estimatedTiles = remember(downloadBounds, maxZoom) {
-        downloadBounds?.let { estimateTiles(it, maxZoom.toInt()) } ?: 0
+    val accent = LocalAccent.current
+    val fallbackBounds = currentLocation?.let { loc ->
+        val pad = 0.04
+        doubleArrayOf(loc.longitude - pad, loc.latitude - pad, loc.longitude + pad, loc.latitude + pad)
+    }
+    val activeBounds = downloadBounds ?: fallbackBounds
+    val estimatedTiles = remember(activeBounds, maxZoom) {
+        activeBounds?.let { estimateTiles(it, maxZoom.toInt()) } ?: 0
     }
     val estimatedMb = (estimatedTiles * 18L / 1024).coerceAtLeast(1)
 
@@ -545,7 +588,7 @@ fun OfflineDownloadScreen(
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = OnSurfaceVariant)
             }
-            Text("OFFLINE MAPS", color = OnSurface, fontSize = 20.sp, fontWeight = FontWeight.Medium)
+            Text("DOWNLOAD MAP AREA", color = OnSurface, fontSize = 18.sp, fontWeight = FontWeight.Medium)
         }
 
         Box(modifier = Modifier.fillMaxWidth().weight(0.45f)) {
@@ -563,13 +606,13 @@ fun OfflineDownloadScreen(
                         val rectSize = Size(rectW, rectH)
                         val radius = boxCornerRadius.toPx()
                         drawRoundRect(
-                            color = Amber.copy(alpha = 0.06f),
+                            color = accent.copy(alpha = 0.06f),
                             topLeft = topLeft,
                             size = rectSize,
                             cornerRadius = CornerRadius(radius)
                         )
                         drawRoundRect(
-                            color = Amber,
+                            color = accent,
                             topLeft = topLeft,
                             size = rectSize,
                             cornerRadius = CornerRadius(radius),
@@ -579,7 +622,9 @@ fun OfflineDownloadScreen(
                 mapLayer = settings.mapLayer,
                 hillshade = settings.hillshadeEnabled,
                 routePoints = points,
-                fitRouteTrigger = 1,
+                currentLocation = currentLocation,
+                recenterTrigger = if (points.size >= 2) 0 else 1,
+                fitRouteTrigger = if (points.size >= 2) 1 else 0,
                 autoFitRoute = false,
                 regionInsetDp = boxInset,
                 onRegionBoundsChanged = { downloadBounds = it }
@@ -593,11 +638,11 @@ fun OfflineDownloadScreen(
                 .padding(horizontal = MarginEdge, vertical = 12.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            Text(route.name, color = OnSurface, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-            Text("Pan and zoom the map so the green box covers the area you want offline", color = OnSurfaceVariant, fontSize = 13.sp)
+            Text(route?.name ?: "Custom area", color = OnSurface, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text("Pan and zoom so the box covers the ground you want offline. Drag the Area Size slider to grow or shrink the box.", color = OnSurfaceVariant, fontSize = 13.sp)
             Text(
                 "Packs $layerLabels, then refreshes GPS assistance.",
-                color = Amber,
+                color = accent,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(top = 6.dp)
             )
@@ -607,7 +652,7 @@ fun OfflineDownloadScreen(
             AlpineSectionLabel("Area Size")
             Text(
                 if (areaPadding < 0.33f) "Small download box" else if (areaPadding < 0.66f) "Medium download box" else "Large download box",
-                color = Amber,
+                color = accent,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
@@ -617,8 +662,8 @@ fun OfflineDownloadScreen(
                 onValueChange = { areaPadding = it },
                 valueRange = 0f..1f,
                 colors = androidx.compose.material3.SliderDefaults.colors(
-                    thumbColor = Amber,
-                    activeTrackColor = Amber,
+                    thumbColor = accent,
+                    activeTrackColor = accent,
                     inactiveTrackColor = SurfaceContainerHighest
                 )
             )
@@ -629,15 +674,15 @@ fun OfflineDownloadScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
             AlpineSectionLabel("Detail Level")
-            Text("Zoom 10 — ${maxZoom.toInt()}", color = Amber, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Text("Zoom 10 — ${maxZoom.toInt()}", color = accent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             Slider(
                 value = maxZoom,
                 onValueChange = { maxZoom = it },
                 valueRange = 12f..16f,
                 steps = 3,
                 colors = androidx.compose.material3.SliderDefaults.colors(
-                    thumbColor = Amber,
-                    activeTrackColor = Amber,
+                    thumbColor = accent,
+                    activeTrackColor = accent,
                     inactiveTrackColor = SurfaceContainerHighest
                 )
             )
@@ -665,6 +710,12 @@ fun OfflineDownloadScreen(
                         checked = includeDem,
                         onCheckedChange = { includeDem = it }
                     )
+                    Text(
+                        "3DEP slope, aspect, contours, and 3D only exist inside downloaded terrain boxes. They are not a live nationwide layer.",
+                        color = OnSurfaceVariant,
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                     val gnssStatus = when {
                         settings.gnssAssistanceUpdatedAt <= 0L -> "GPS assistance not downloaded yet"
                         FormatUtils.isStale(settings.gnssAssistanceUpdatedAt) ->
@@ -673,7 +724,7 @@ fun OfflineDownloadScreen(
                     }
                     Text(
                         gnssStatus,
-                        color = if (FormatUtils.isStale(settings.gnssAssistanceUpdatedAt)) OnSurfaceVariant else Amber,
+                        color = if (FormatUtils.isStale(settings.gnssAssistanceUpdatedAt)) OnSurfaceVariant else accent,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(top = 6.dp)
                     )
@@ -690,19 +741,19 @@ fun OfflineDownloadScreen(
                 Text(demError ?: "", color = RedAlert, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
             }
             if (demDownloading) {
-                Text("Terrain ${(demProgress * 100).toInt()}%", color = Amber, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+                Text("Terrain ${(demProgress * 100).toInt()}%", color = accent, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
             }
             if (downloadState.isDownloading) {
                 Spacer(modifier = Modifier.height(12.dp))
                 LinearProgressIndicator(
                     progress = { downloadState.progress },
                     modifier = Modifier.fillMaxWidth().height(4.dp),
-                    color = Amber,
+                    color = accent,
                     trackColor = SurfaceContainerHighest
                 )
                 Text(
                     "Downloading… ${(downloadState.progress * 100).toInt()}%",
-                    color = Amber,
+                    color = accent,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(top = 6.dp)
                 )
@@ -712,9 +763,9 @@ fun OfflineDownloadScreen(
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Gutter)) {
                 AlpineOutlineButton(text = "Cancel", onClick = onBack, modifier = Modifier.weight(1f))
                 AlpinePrimaryButton(
-                    text = if (route.offlineDownloaded) "Re-download" else "Download",
-                    onClick = { downloadBounds?.let { onDownload(it, maxZoom.toInt(), includeDem) } },
-                    enabled = !downloadState.isDownloading && !demDownloading && !gnssRefreshing && estimatedTiles > 0 && downloadBounds != null,
+                    text = if (route?.offlineDownloaded == true) "Re-download" else "Download",
+                    onClick = { activeBounds?.let { onDownload(it, maxZoom.toInt(), includeDem) } },
+                    enabled = !downloadState.isDownloading && !demDownloading && !gnssRefreshing && estimatedTiles > 0 && activeBounds != null,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -737,8 +788,8 @@ private fun SettingsToggle(label: String, checked: Boolean, onCheckedChange: (Bo
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Amber,
-                checkedTrackColor = Amber.copy(alpha = 0.4f),
+                checkedThumbColor = LocalAccent.current,
+                checkedTrackColor = LocalAccent.current.copy(alpha = 0.4f),
                 uncheckedThumbColor = OnSurfaceVariant,
                 uncheckedTrackColor = SurfaceContainerHighest
             )

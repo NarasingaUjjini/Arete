@@ -33,13 +33,17 @@ import com.trailmap.gps.ui.theme.WarningAmber
 fun GpsStatusChip(
     state: CurrentLocationState,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    integrityLabel: String = "",
+    uncertaintyLabel: String = ""
 ) {
     val color = qualityColor(state.quality)
-    val accuracy = if (state.timestamp > 0L && state.horizontalAccuracy.isFinite()) {
-        "±${state.horizontalAccuracy.toInt()}m"
-    } else {
-        "no fix"
+    val accuracy = uncertaintyLabel.ifBlank {
+        if (state.timestamp > 0L && state.horizontalAccuracy.isFinite()) {
+            "±${state.horizontalAccuracy.toInt()}m"
+        } else {
+            "no fix"
+        }
     }
     val age = if (state.timestamp > 0L) {
         val seconds = state.ageMs / 1000.0
@@ -47,7 +51,7 @@ fun GpsStatusChip(
     } else {
         "—"
     }
-    val statusText = qualityLabel(state.quality)
+    val statusText = integrityLabel.ifBlank { qualityLabel(state.quality) }
     Surface(
         onClick = onClick,
         modifier = modifier.semantics {

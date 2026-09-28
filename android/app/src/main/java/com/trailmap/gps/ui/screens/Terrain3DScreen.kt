@@ -38,6 +38,7 @@ import com.trailmap.gps.data.Waypoint
 import com.trailmap.gps.terrain.DemGrid
 import com.trailmap.gps.terrain.TerrainMath
 import com.trailmap.gps.ui.theme.Black
+import com.trailmap.gps.ui.theme.LocalAccent
 import com.trailmap.gps.ui.theme.OnSurface
 import com.trailmap.gps.ui.theme.OnSurfaceVariant
 import com.trailmap.gps.ui.theme.TrailGreen
@@ -67,7 +68,7 @@ fun Terrain3DScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = OnSurface)
             }
             Column {
-                Text("3D TERRAIN", color = com.trailmap.gps.ui.theme.Amber, fontWeight = FontWeight.SemiBold)
+                Text("3D TERRAIN", color = LocalAccent.current, fontWeight = FontWeight.SemiBold)
                 Text("${grid.source} · local mesh", color = OnSurfaceVariant, fontSize = 11.sp)
             }
         }

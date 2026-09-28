@@ -47,6 +47,7 @@ import com.trailmap.gps.ui.components.AlpinePrimaryButton
 import com.trailmap.gps.ui.components.AlpineSectionLabel
 import com.trailmap.gps.ui.components.AlpineSegmentedControl
 import com.trailmap.gps.ui.theme.Black
+import com.trailmap.gps.ui.theme.LocalAccent
 import com.trailmap.gps.ui.theme.OnSurface
 import com.trailmap.gps.ui.theme.OnSurfaceVariant
 import com.trailmap.gps.ui.theme.RedAlert
@@ -99,7 +100,7 @@ fun TripPackScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = OnSurface)
             }
             Column {
-                Text("TRIP PACK", color = com.trailmap.gps.ui.theme.Amber, fontWeight = FontWeight.SemiBold)
+                Text("TRIP PACK", color = LocalAccent.current, fontWeight = FontWeight.SemiBold)
                 Text(route.name, color = OnSurface, fontSize = 13.sp)
             }
         }
