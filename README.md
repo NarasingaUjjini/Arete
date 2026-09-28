@@ -24,7 +24,17 @@ A free, import-first Android hiking and mountaineering GPS app. Bring routes via
 
 UI design prompts for Google Stitch are in [`design/stitch/`](design/stitch/).
 
-## Build & Install
+## Install from GitHub (no Play Store)
+
+1. Open **[Releases](https://github.com/NarasingaUjjini/Arete/releases)** and download `Arete-*.apk` (use **Sideload APK** if you want the latest workflow build).
+2. On the phone, allow install from the browser / GitHub (unknown sources).
+3. Open the APK and install. Android 8.0 or newer.
+
+GitHub APKs are **debug-signed** and **do not contain NPS or Recreation.gov API keys**. Topo, GPS, import, trip packs, and NWS still work. Rec Info is empty on those builds.
+
+To publish a new APK: push a tag `v1.0.1`, or run the **Release APK** workflow from the Actions tab.
+
+## Build from source
 
 ### Prerequisites
 
@@ -34,10 +44,12 @@ UI design prompts for Google Stitch are in [`design/stitch/`](design/stitch/).
 
 ### Steps
 
-1. Open the `android/` folder in Android Studio
+1. Open the `android/` folder in Android Studio (not the parent folder)
 2. Let Gradle sync complete
 3. Connect your Android phone (USB debugging enabled) or use an emulator
 4. Run the app (green play button)
+
+Optional Rec Info keys (your own, never commit them): copy `android/local.properties.example` and add `NPS_API_KEY` / `RIDB_API_KEY`.
 
 ### Build from command line
 

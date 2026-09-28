@@ -1,0 +1,7 @@
+## Copy to local.properties (that file is gitignored).
+## Android Studio writes sdk.dir. Leave the keys blank unless you issue
+## your own free keys — never commit them, and never put someone else's in.
+#
+# sdk.dir=/path/to/Android/sdk
+# NPS_API_KEY=
+# RIDB_API_KEY=

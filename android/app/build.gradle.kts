@@ -16,6 +16,8 @@ android {
         versionCode = 1
         versionName = "1.0.0"
         fun secret(name: String): String {
+            // Public / CI APKs must never bake in personal NPS/RIDB keys.
+            if (System.getenv("ARETE_PUBLIC_BUILD") == "1") return ""
             val local = rootProject.file("local.properties")
             if (!local.exists()) return ""
             val raw = local.readLines()
