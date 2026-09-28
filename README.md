@@ -26,13 +26,17 @@ UI design prompts for Google Stitch are in [`design/stitch/`](design/stitch/).
 
 ## Install from GitHub (no Play Store)
 
-1. Open **[Releases](https://github.com/NarasingaUjjini/Arete/releases)** and download `Arete-*.apk` (use **Sideload APK** if you want the latest workflow build).
-2. On the phone, allow install from the browser / GitHub (unknown sources).
+One-button page: **[Install Arête](https://narasingaujjini.github.io/NarasingaUjjini/install.html)**
+
+Direct APK: [Arete.apk](https://github.com/NarasingaUjjini/Arete/releases/latest/download/Arete.apk)
+
+1. Tap **Download for Android** (or the APK link above).
+2. On the phone, allow install from the browser (unknown sources).
 3. Open the APK and install. Android 8.0 or newer.
 
 GitHub APKs are **debug-signed** and **do not contain NPS or Recreation.gov API keys**. Topo, GPS, import, trip packs, and NWS still work. Rec Info is empty on those builds.
 
-To publish a new APK: push a tag `v1.0.1`, or run the **Release APK** workflow from the Actions tab.
+To publish a new APK: push a tag `v1.0.1`, push/update the `sideload` tag, or run the **Release APK** workflow from the Actions tab.
 
 ## Build from source
 

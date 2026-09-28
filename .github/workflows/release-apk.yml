@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+      - "sideload"
   workflow_dispatch:
 
 permissions:
@@ -41,6 +42,7 @@ jobs:
             VERSION="sideload"
           fi
           cp app/build/outputs/apk/debug/app-debug.apk "dist/Arete-${VERSION}.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "dist/Arete.apk"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -52,7 +54,8 @@ jobs:
         with:
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'sideload' }}
           name: ${{ github.ref_type == 'tag' && github.ref_name || 'Sideload APK' }}
-          prerelease: ${{ github.ref_type != 'tag' }}
+          prerelease: false
+          make_latest: true
           generate_release_notes: ${{ github.ref_type == 'tag' }}
           files: android/dist/*.apk
           body: |
