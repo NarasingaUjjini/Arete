@@ -36,7 +36,7 @@ Direct APK: [Arete.apk](https://github.com/NarasingaUjjini/Arete/releases/latest
 
 GitHub APKs are **debug-signed** and **do not contain NPS or Recreation.gov API keys**. Topo, GPS, import, trip packs, and NWS still work. Rec Info is empty on those builds.
 
-To publish a new APK: push a tag `v1.0.1`, push/update the `sideload` tag, or run the **Release APK** workflow from the Actions tab.
+Every push to **main** that touches `android/` rebuilds and publishes `Arete.apk` as the latest release. You can also push a tag `v1.0.1`, update the `sideload` tag, or run **Release APK** from the Actions tab.
 
 ## Build from source
 

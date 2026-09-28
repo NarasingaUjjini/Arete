@@ -158,7 +158,13 @@ fun TrailMapView(
                         isAttributionEnabled = !batterySaver
                         isLogoEnabled = false
                         isCompassEnabled = false
-                        isRotateGesturesEnabled = true
+                        isRotateGesturesEnabled = regionInsetDp == null
+                        isTiltGesturesEnabled = regionInsetDp == null
+                    }
+                    if (regionInsetDp != null) {
+                        map.cameraPosition = CameraPosition.Builder(map.cameraPosition)
+                            .tilt(0.0)
+                            .build()
                     }
                     map.prefetchZoomDelta = if (batterySaver) 0 else 3
                     map.addOnCameraMoveListener {
@@ -216,6 +222,15 @@ fun TrailMapView(
     LaunchedEffect(regionInsetDp, styleLoaded) {
         val map = mapRef ?: return@LaunchedEffect
         val view = mapView ?: return@LaunchedEffect
+        map.uiSettings.isTiltGesturesEnabled = regionInsetDp == null
+        map.uiSettings.isRotateGesturesEnabled = regionInsetDp == null
+        if (regionInsetDp != null && map.cameraPosition.tilt != 0.0) {
+            map.moveCamera(
+                CameraUpdateFactory.newCameraPosition(
+                    CameraPosition.Builder(map.cameraPosition).tilt(0.0).build()
+                )
+            )
+        }
         if (styleLoaded) reportRegionBounds(map, view)
     }
 

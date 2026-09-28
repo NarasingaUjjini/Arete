@@ -101,6 +101,6 @@ enum class MapChromeLayout(val title: String, val summary: String) {
 
     companion object {
         fun fromStored(raw: String?): MapChromeLayout =
-            entries.firstOrNull { it.name == raw } ?: EDGE
+            entries.firstOrNull { it.name == raw } ?: RAIL
     }
 }

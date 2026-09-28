@@ -2,6 +2,11 @@ name: Release APK
 
 on:
   push:
+    branches:
+      - main
+    paths:
+      - "android/**"
+      - ".github/workflows/release-apk.yml"
     tags:
       - "v*"
       - "sideload"
@@ -64,3 +69,5 @@ jobs:
             This build does **not** include NPS or Recreation.gov API keys.
             Maps, GPS, import, and USGS/NWS still work. Rec Info stays empty
             unless you build locally with your own keys in `local.properties`.
+
+            Built from `${{ github.sha }}` on `${{ github.ref_name }}`.

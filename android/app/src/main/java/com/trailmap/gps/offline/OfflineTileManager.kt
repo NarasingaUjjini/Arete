@@ -135,11 +135,20 @@ class OfflineTileManager(private val context: Context) {
     private val _state = MutableStateFlow(OfflineDownloadState())
     val state: StateFlow<OfflineDownloadState> = _state.asStateFlow()
 
+    @Volatile private var cancelRequested = false
+
     private val tileDir: File
         get() = File(context.filesDir, "offline_tiles").also { it.mkdirs() }
 
     private val emptyTileFile: File
         get() = File(context.filesDir, "empty_tile.png")
+
+    fun cancelDownload() {
+        cancelRequested = true
+        if (_state.value.isDownloading) {
+            _state.value = _state.value.copy(isDownloading = false, error = "Download cancelled")
+        }
+    }
 
     fun installResourceTransform() {
         ensureEmptyTile()
@@ -330,9 +339,19 @@ class OfflineTileManager(private val context: Context) {
 
         var downloadedBytes = 0L
         var completed = 0
+        cancelRequested = false
         _state.value = OfflineDownloadState(isDownloading = true, totalTiles = jobs.size)
 
         jobs.forEach { (tile, source) ->
+            if (cancelRequested) {
+                _state.value = _state.value.copy(
+                    isDownloading = false,
+                    error = "Download cancelled",
+                    downloadedBytes = downloadedBytes,
+                    completedTiles = completed
+                )
+                return downloadedBytes
+            }
             try {
                 downloadedBytes += downloadTile(source, tile.z, tile.x, tile.y)
             } catch (_: Exception) {

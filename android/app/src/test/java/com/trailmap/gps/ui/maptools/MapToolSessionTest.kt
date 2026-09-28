@@ -50,9 +50,9 @@ class MapToolSessionTest {
     }
 
     @Test
-    fun defaultChromeIsEdge() {
-        assertEquals(MapChromeLayout.EDGE, MapChromeLayout.fromStored(null))
-        assertEquals(MapChromeLayout.RAIL, MapChromeLayout.fromStored("RAIL"))
+    fun defaultChromeIsRail() {
+        assertEquals(MapChromeLayout.RAIL, MapChromeLayout.fromStored(null))
+        assertEquals(MapChromeLayout.EDGE, MapChromeLayout.fromStored("EDGE"))
     }
 
     @Test

@@ -28,8 +28,8 @@ class Phase7SettingsTest {
     }
 
     @Test
-    fun mapChromeDefaultsToEdge() {
-        assertEquals(MapChromeLayout.EDGE, MapChromeLayout.fromStored(null))
+    fun mapChromeDefaultsToRail() {
+        assertEquals(MapChromeLayout.RAIL, MapChromeLayout.fromStored(null))
         assertEquals(3, MapChromeLayout.entries.size)
     }
 

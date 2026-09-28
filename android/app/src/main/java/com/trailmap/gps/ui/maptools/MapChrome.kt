@@ -28,10 +28,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.trailmap.gps.data.MapChromeLayout
+import com.trailmap.gps.ui.theme.AlpineShape
 import com.trailmap.gps.ui.theme.Hairline
 import com.trailmap.gps.ui.theme.JetBrainsMono
 import com.trailmap.gps.ui.theme.LocalAccent
 import com.trailmap.gps.ui.theme.OnSurface
+import com.trailmap.gps.ui.theme.OnSurfaceVariant
 import com.trailmap.gps.ui.theme.TouchTarget
 
 @Composable
@@ -175,22 +177,31 @@ private fun BoxScope.EdgeChrome(
     onMore: () -> Unit,
     onRecInfo: () -> Unit
 ) {
+    val edgeInk = OnSurface
     Column(
         modifier = Modifier
             .align(Alignment.TopStart)
             .statusBarsPadding()
             .padding(start = 12.dp, top = 8.dp)
     ) {
-        MapScaleBar(field.scale, ink = Color(0xF21F2420))
-        if (activeTool == null) {
-            Text(
-                "${field.qualityLabel} · ${field.accuracyLabel}",
-                color = Color(0xF21F2420),
-                fontFamily = JetBrainsMono,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 4.dp)
-            )
+        Surface(
+            color = Color(0xCC121518),
+            shape = AlpineShape,
+            border = BorderStroke(1.dp, Hairline)
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
+                MapScaleBar(field.scale, ink = edgeInk)
+                if (activeTool == null) {
+                    Text(
+                        "${field.qualityLabel} · ${field.accuracyLabel}",
+                        color = edgeInk,
+                        fontFamily = JetBrainsMono,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
         }
     }
     Column(
@@ -198,7 +209,7 @@ private fun BoxScope.EdgeChrome(
             .align(Alignment.CenterEnd)
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(end = 2.dp, top = 48.dp, bottom = 24.dp)
+            .padding(end = 4.dp, top = 48.dp, bottom = 24.dp)
             .fillMaxHeight(),
         verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.End
@@ -213,11 +224,20 @@ private fun BoxScope.EdgeChrome(
 
 @Composable
 private fun QuietReadout(field: MapFieldSnapshot) {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        field.readings.take(3).forEach { reading ->
-            Column {
-                Text(reading.label, color = Color(0xF21F2420), fontFamily = JetBrainsMono, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                Text("${reading.value} ${reading.unit}".trim(), color = Color(0xF21F2420), fontFamily = JetBrainsMono, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+    Surface(
+        color = Color(0xCC121518),
+        shape = AlpineShape,
+        border = BorderStroke(1.dp, Hairline)
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+        ) {
+            field.readings.take(3).forEach { reading ->
+                Column {
+                    Text(reading.label, color = OnSurfaceVariant, fontFamily = JetBrainsMono, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text("${reading.value} ${reading.unit}".trim(), color = OnSurface, fontFamily = JetBrainsMono, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
@@ -235,11 +255,17 @@ private fun ToolTick(
     val color = when {
         alert -> com.trailmap.gps.ui.theme.HazardRed
         selected -> LocalAccent.current
-        else -> if (edge) Color(0xF21F2420) else OnSurface
+        else -> OnSurface
     }
     Surface(
         onClick = onClick,
-        color = if (wide && selected) LocalAccent.current.copy(alpha = 0.18f) else Color.Transparent,
+        color = when {
+            wide && selected -> LocalAccent.current.copy(alpha = 0.18f)
+            edge -> Color(0xCC121518)
+            else -> Color.Transparent
+        },
+        border = if (edge) BorderStroke(1.dp, Hairline) else null,
+        shape = AlpineShape,
         modifier = Modifier
             .then(if (wide) Modifier.fillMaxWidth() else Modifier.width(TouchTarget))
             .height(TouchTarget)

@@ -297,7 +297,7 @@ fun RouteInstrument(
 fun DestinationMenu(
     isRecording: Boolean,
     isFullscreen: Boolean,
-    mapChrome: com.trailmap.gps.data.MapChromeLayout = com.trailmap.gps.data.MapChromeLayout.EDGE,
+    mapChrome: com.trailmap.gps.data.MapChromeLayout = com.trailmap.gps.data.MapChromeLayout.RAIL,
     onMapChrome: (com.trailmap.gps.data.MapChromeLayout) -> Unit = {},
     onSelect: (MapDestination) -> Unit,
     onDismiss: () -> Unit,

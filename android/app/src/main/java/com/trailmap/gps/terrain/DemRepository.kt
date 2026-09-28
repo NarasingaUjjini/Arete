@@ -8,6 +8,7 @@ import com.trailmap.gps.data.providers.DataFreshness
 import com.trailmap.gps.geo.RouteGeometry
 import com.trailmap.gps.util.AppLog
 import com.trailmap.gps.util.NavigationUtils
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -55,7 +56,14 @@ data class TerrainInspection(
     val elevationAboveUserMeters: Double? = null,
     val source: String = "USGS 3DEP",
     val offline: Boolean = false,
-    val freshness: DataFreshness? = null
+    val freshness: DataFreshness? = null,
+    val loading: Boolean = false,
+    val avgFromLat: Double? = null,
+    val avgFromLon: Double? = null,
+    val avgDistanceMeters: Double? = null,
+    val avgRiseMeters: Double? = null,
+    val avgGradePercent: Double? = null,
+    val avgSlopeDegrees: Double? = null
 )
 
 class DemRepository(context: Context) {
@@ -67,9 +75,18 @@ class DemRepository(context: Context) {
     private val _download = MutableStateFlow(DemDownloadState())
     val download: StateFlow<DemDownloadState> = _download.asStateFlow()
 
+    @Volatile private var cancelRequested = false
+
     private var cached: Pair<String, DemGrid>? = null
 
     val terrainProvider: Usgs3depProvider get() = provider
+
+    fun cancelDownload() {
+        cancelRequested = true
+        if (_download.value.isDownloading) {
+            _download.value = _download.value.copy(isDownloading = false, error = "Download cancelled")
+        }
+    }
 
     fun packs(): List<DemPackInfo> = readIndex()
 
@@ -167,12 +184,23 @@ class DemRepository(context: Context) {
     }
 
     suspend fun downloadForBounds(bounds: BoundingBox): DemPackInfo? = withContext(Dispatchers.IO) {
+        cancelRequested = false
         _download.value = DemDownloadState(isDownloading = true, progress = 0f)
         try {
-            val grid = provider.downloadGrid(bounds) { _download.value = _download.value.copy(progress = it) }
+            val grid = provider.downloadGrid(bounds) {
+                if (cancelRequested) throw CancellationException("DEM download cancelled")
+                _download.value = _download.value.copy(progress = it)
+            }
+            if (cancelRequested) {
+                _download.value = DemDownloadState(isDownloading = false, error = "Download cancelled")
+                return@withContext null
+            }
             val pack = persist(grid)
             _download.value = DemDownloadState(isDownloading = false, progress = 1f, lastPack = pack)
             pack
+        } catch (e: CancellationException) {
+            _download.value = DemDownloadState(isDownloading = false, error = "Download cancelled")
+            null
         } catch (e: Exception) {
             AppLog.w("terrain", "DEM download failed", e)
             _download.value = DemDownloadState(

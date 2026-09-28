@@ -456,6 +456,7 @@ fun TrailMapAppContent(
                     onDownload = { bounds, zoom, includeDem ->
                         viewModel.downloadArea(bounds, zoom, includeDem, selectedRoute?.id)
                     },
+                    onCancelDownload = viewModel::cancelAreaDownload,
                     estimateTiles = { bounds, zoom -> viewModel.estimateOfflineTiles(bounds, zoom) },
                     demProgress = demDownload.progress,
                     demError = demDownload.error,

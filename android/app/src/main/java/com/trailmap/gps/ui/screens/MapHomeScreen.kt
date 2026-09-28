@@ -179,7 +179,10 @@ fun MapHomeScreen(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .statusBarsPadding()
-                .padding(top = 8.dp, end = 56.dp),
+                .padding(
+                    top = 8.dp,
+                    end = if (settings.mapChrome == com.trailmap.gps.data.MapChromeLayout.EDGE) 52.dp else MarginEdge
+                ),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             CompassRoseButton(mapBearing = mapBearing, onClick = onAlignNorth)

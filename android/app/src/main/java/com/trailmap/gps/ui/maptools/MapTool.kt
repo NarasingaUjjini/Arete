@@ -20,7 +20,7 @@ enum class MapDestination(val label: String) {
     CONDITIONS("Conditions"),
     REC_INFO("NPS/Rec Info"),
     IMPORT("Import"),
-    DOWNLOAD("Download area"),
+    DOWNLOAD("Download terrain box"),
     GPS("GPS diagnostics"),
     FULLSCREEN("Fullscreen")
 }

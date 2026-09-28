@@ -243,7 +243,7 @@ fun SettingsScreen(
                         Text(gnssMessage, color = OnSurfaceVariant, fontSize = 12.sp)
                     }
                     AlpinePrimaryButton(
-                        text = if (gnssRefreshing) "Opening…" else "Download map area",
+                        text = if (gnssRefreshing) "Opening…" else "Download terrain box",
                         onClick = onDownloadMapArea,
                         enabled = !gnssRefreshing,
                         modifier = Modifier.fillMaxWidth()
@@ -550,6 +550,7 @@ fun OfflineDownloadScreen(
     gnssMessage: String?,
     onBack: () -> Unit,
     onDownload: (bounds: DoubleArray, maxZoom: Int, includeDem: Boolean) -> Unit,
+    onCancelDownload: () -> Unit = {},
     estimateTiles: (bounds: DoubleArray, maxZoom: Int) -> Int,
     demProgress: Float = 0f,
     demError: String? = null,
@@ -588,7 +589,7 @@ fun OfflineDownloadScreen(
             IconButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = OnSurfaceVariant)
             }
-            Text("DOWNLOAD MAP AREA", color = OnSurface, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+            Text("DOWNLOAD TERRAIN BOX", color = OnSurface, fontSize = 18.sp, fontWeight = FontWeight.Medium)
         }
 
         Box(modifier = Modifier.fillMaxWidth().weight(0.45f)) {
@@ -639,7 +640,11 @@ fun OfflineDownloadScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Text(route?.name ?: "Custom area", color = OnSurface, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-            Text("Pan and zoom so the box covers the ground you want offline. Drag the Area Size slider to grow or shrink the box.", color = OnSurfaceVariant, fontSize = 13.sp)
+            Text(
+                "Pan and zoom so the green box covers the ground you want offline. Tilt is locked here so the box stays flat. Drag Area Size to grow or shrink the box, then tap Download.",
+                color = OnSurface,
+                fontSize = 13.sp
+            )
             Text(
                 "Packs $layerLabels, then refreshes GPS assistance.",
                 color = accent,
@@ -760,12 +765,20 @@ fun OfflineDownloadScreen(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+            val busy = downloadState.isDownloading || demDownloading || gnssRefreshing
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Gutter)) {
-                AlpineOutlineButton(text = "Cancel", onClick = onBack, modifier = Modifier.weight(1f))
+                AlpineOutlineButton(
+                    text = if (downloadState.isDownloading || demDownloading) "Stop" else "Cancel",
+                    onClick = {
+                        if (downloadState.isDownloading || demDownloading) onCancelDownload()
+                        else onBack()
+                    },
+                    modifier = Modifier.weight(1f)
+                )
                 AlpinePrimaryButton(
                     text = if (route?.offlineDownloaded == true) "Re-download" else "Download",
                     onClick = { activeBounds?.let { onDownload(it, maxZoom.toInt(), includeDem) } },
-                    enabled = !downloadState.isDownloading && !demDownloading && !gnssRefreshing && estimatedTiles > 0 && activeBounds != null,
+                    enabled = !busy && estimatedTiles > 0 && activeBounds != null,
                     modifier = Modifier.weight(1f)
                 )
             }

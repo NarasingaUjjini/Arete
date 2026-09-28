@@ -138,7 +138,7 @@ data class AppSettings(
     val overlayStrength: OverlayStrength = OverlayStrength.LOW,
     val largeNumbers: Boolean = false,
     val libraryFilter: RouteLibraryFilter = RouteLibraryFilter.ALL,
-    val mapChrome: MapChromeLayout = MapChromeLayout.EDGE
+    val mapChrome: MapChromeLayout = MapChromeLayout.RAIL
 ) {
     val accentHex: String get() = accentTheme.hex
 }

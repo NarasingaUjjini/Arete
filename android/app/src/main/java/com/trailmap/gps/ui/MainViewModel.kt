@@ -29,6 +29,7 @@ import com.trailmap.gps.terrain.DemGrid
 import com.trailmap.gps.terrain.TerrainInspection
 import com.trailmap.gps.terrain.TerrainOverlay
 import com.trailmap.gps.terrain.VerticalSpeedTracker
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -101,6 +102,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _inspection = MutableStateFlow<TerrainInspection?>(null)
     val inspection: StateFlow<TerrainInspection?> = _inspection.asStateFlow()
+    private var measureAnchor: TerrainInspection? = null
+    private var areaDownloadJob: Job? = null
 
     private val _terrainOverlay = MutableStateFlow(TerrainOverlay.NONE)
     val terrainOverlay: StateFlow<TerrainOverlay> = _terrainOverlay.asStateFlow()
@@ -339,8 +342,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         downloadOffline(routeId ?: -1L, bounds, maxZoom, includeDem)
     }
 
+    fun cancelAreaDownload() {
+        areaDownloadJob?.cancel()
+        areaDownloadJob = null
+        offlineManager.cancelDownload()
+        demRepository.cancelDownload()
+    }
+
     fun downloadOffline(routeId: Long, bounds: DoubleArray, maxZoom: Int = 15, includeDem: Boolean = true) {
-        viewModelScope.launch {
+        areaDownloadJob?.cancel()
+        areaDownloadJob = viewModelScope.launch {
             val current = settings.value
             val bytes = offlineManager.downloadForBounds(
                 bounds = bounds,
@@ -353,30 +364,59 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 routeRepository.markOfflineDownloaded(routeId, bytes)
                 _selectedRoute.value = routeRepository.getById(routeId)
             }
-            if (includeDem) {
+            if (includeDem && offlineManager.state.value.error != "Download cancelled") {
                 demRepository.downloadForBounds(
                     com.trailmap.gps.data.providers.BoundingBox(bounds[0], bounds[1], bounds[2], bounds[3])
                 )
             }
-            refreshGnssAssistance()
+            if (offlineManager.state.value.error != "Download cancelled") {
+                refreshGnssAssistance()
+            }
         }
     }
 
     fun inspectTerrain(lat: Double, lon: Double) {
+        val previous = measureAnchor
+        _inspection.value = TerrainInspection(lat = lat, lon = lon, loading = true, source = "Loading…")
         viewModelScope.launch {
             val route = _selectedRoute.value
             val points = route?.let { getRoutePoints(it) }.orEmpty()
-            _inspection.value = demRepository.inspectOrFetch(
+            val result = demRepository.inspectOrFetch(
                 lat = lat,
                 lon = lon,
                 userElevation = _currentLocation.value?.elevation,
                 routePoints = points
             )
+            val prior = previous
+            val fromEle = prior?.demElevationMeters
+            val toEle = result.demElevationMeters
+            val filled = if (
+                prior != null &&
+                fromEle != null &&
+                toEle != null &&
+                (kotlin.math.abs(prior.lat - lat) > 1e-7 || kotlin.math.abs(prior.lon - lon) > 1e-7)
+            ) {
+                val distance = GeoMath.haversineMeters(prior.lat, prior.lon, lat, lon)
+                val rise = toEle - fromEle
+                result.copy(
+                    avgFromLat = prior.lat,
+                    avgFromLon = prior.lon,
+                    avgDistanceMeters = distance,
+                    avgRiseMeters = rise,
+                    avgGradePercent = ElevationStats.gradePercent(rise, distance),
+                    avgSlopeDegrees = ElevationStats.slopeDegrees(rise, distance)
+                )
+            } else {
+                result
+            }
+            _inspection.value = filled
+            measureAnchor = filled
         }
     }
 
     fun clearInspection() {
         _inspection.value = null
+        measureAnchor = null
     }
 
     fun setTerrainOverlay(mode: TerrainOverlay) {

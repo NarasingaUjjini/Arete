@@ -26,6 +26,7 @@ import com.trailmap.gps.ui.theme.OnSurface
 import com.trailmap.gps.ui.theme.OnSurfaceVariant
 import com.trailmap.gps.ui.theme.TelemetryMuted
 import com.trailmap.gps.util.FormatUtils
+import kotlin.math.abs
 
 @Composable
 fun TerrainInspectorCard(
@@ -44,7 +45,7 @@ fun TerrainInspectorCard(
         Column(modifier = Modifier.padding(14.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
-                    "TERRAIN INSPECT",
+                    if (inspection.loading) "TERRAIN INSPECT · LOADING" else "TERRAIN INSPECT",
                     color = LocalAccent.current,
                     fontFamily = JetBrainsMono,
                     fontSize = 10.sp,
@@ -67,6 +68,16 @@ fun TerrainInspectorCard(
                 fontSize = 12.sp,
                 modifier = Modifier.padding(top = 6.dp)
             )
+            if (inspection.loading) {
+                Text(
+                    "Fetching elevation…",
+                    color = OnSurfaceVariant,
+                    fontFamily = JetBrainsMono,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 12.dp)
+                )
+                return@Column
+            }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -95,7 +106,7 @@ fun TerrainInspectorCard(
                 InspectorStat(
                     label = "SLOPE",
                     value = inspection.slopeDegrees?.let { "${it.toInt()}°" } ?: "—",
-                    hint = "",
+                    hint = "at point",
                     modifier = Modifier.weight(1f)
                 )
                 InspectorStat(
@@ -106,6 +117,40 @@ fun TerrainInspectorCard(
                     } ?: "—",
                     hint = "",
                     modifier = Modifier.weight(1f)
+                )
+            }
+            if (inspection.avgDistanceMeters != null && inspection.avgGradePercent != null) {
+                val rise = inspection.avgRiseMeters ?: 0.0
+                val riseLabel = FormatUtils.formatElevation(abs(rise), settings.elevationUnit)
+                val dir = when {
+                    rise > 0.5 -> "up"
+                    rise < -0.5 -> "down"
+                    else -> "level"
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    InspectorStat(
+                        label = "AVG GRADE",
+                        value = "${"%.1f".format(inspection.avgGradePercent)}%",
+                        hint = dir,
+                        modifier = Modifier.weight(1f)
+                    )
+                    InspectorStat(
+                        label = "A→B",
+                        value = FormatUtils.formatDistance(inspection.avgDistanceMeters, settings.distanceUnit),
+                        hint = "$riseLabel $dir",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            } else {
+                Text(
+                    "Tap a second point for average slope between the two.",
+                    color = OnSurfaceVariant,
+                    fontFamily = JetBrainsMono,
+                    fontSize = 10.sp,
+                    modifier = Modifier.padding(top = 10.dp)
                 )
             }
             inspection.routeDistanceMeters?.let {
