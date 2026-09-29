@@ -66,6 +66,7 @@ fun TrailMapView(
     orientationTrigger: Int = 0,
     autoFitRoute: Boolean = true,
     regionInsetDp: Dp? = null,
+    cameraLocked: Boolean = false,
     onRegionBoundsChanged: ((DoubleArray) -> Unit)? = null,
     onMapClick: ((lat: Double, lon: Double) -> Unit)? = null,
     onMapLongClick: ((lat: Double, lon: Double) -> Unit)? = null,
@@ -90,8 +91,10 @@ fun TrailMapView(
     val longClickHandlerState = remember { mutableStateOf(onMapLongClick) }
     longClickHandlerState.value = onMapLongClick
     val regionInsetState = remember { mutableStateOf(regionInsetDp) }
+    val cameraLockedState = remember { mutableStateOf(cameraLocked) }
     val boundsCallbackState = remember { mutableStateOf(onRegionBoundsChanged) }
     regionInsetState.value = regionInsetDp
+    cameraLockedState.value = cameraLocked
     boundsCallbackState.value = onRegionBoundsChanged
     val density = LocalDensity.current
     val scaleHandler = rememberUpdatedState(onScaleChanged)
@@ -158,8 +161,11 @@ fun TrailMapView(
                         isAttributionEnabled = !batterySaver
                         isLogoEnabled = false
                         isCompassEnabled = false
-                        isRotateGesturesEnabled = regionInsetDp == null
-                        isTiltGesturesEnabled = regionInsetDp == null
+                        val free = regionInsetDp == null && !cameraLocked
+                        isScrollGesturesEnabled = !cameraLocked
+                        isZoomGesturesEnabled = !cameraLocked
+                        isRotateGesturesEnabled = free
+                        isTiltGesturesEnabled = free
                     }
                     if (regionInsetDp != null) {
                         map.cameraPosition = CameraPosition.Builder(map.cameraPosition)
@@ -219,11 +225,14 @@ fun TrailMapView(
         }
     }
 
-    LaunchedEffect(regionInsetDp, styleLoaded) {
+    LaunchedEffect(regionInsetDp, cameraLocked, styleLoaded) {
         val map = mapRef ?: return@LaunchedEffect
         val view = mapView ?: return@LaunchedEffect
-        map.uiSettings.isTiltGesturesEnabled = regionInsetDp == null
-        map.uiSettings.isRotateGesturesEnabled = regionInsetDp == null
+        val free = regionInsetDp == null && !cameraLocked
+        map.uiSettings.isScrollGesturesEnabled = !cameraLocked
+        map.uiSettings.isZoomGesturesEnabled = !cameraLocked
+        map.uiSettings.isTiltGesturesEnabled = free
+        map.uiSettings.isRotateGesturesEnabled = free
         if (regionInsetDp != null && map.cameraPosition.tilt != 0.0) {
             map.moveCamera(
                 CameraUpdateFactory.newCameraPosition(

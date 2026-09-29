@@ -572,6 +572,7 @@ fun OfflineDownloadScreen(
         activeBounds?.let { estimateTiles(it, maxZoom.toInt()) } ?: 0
     }
     val estimatedMb = (estimatedTiles * 18L / 1024).coerceAtLeast(1)
+    val boxLocked = downloadState.isDownloading || demDownloading
 
     Column(
         modifier = Modifier
@@ -628,7 +629,8 @@ fun OfflineDownloadScreen(
                 fitRouteTrigger = if (points.size >= 2) 1 else 0,
                 autoFitRoute = false,
                 regionInsetDp = boxInset,
-                onRegionBoundsChanged = { downloadBounds = it }
+                cameraLocked = boxLocked,
+                onRegionBoundsChanged = { if (!boxLocked) downloadBounds = it }
             )
         }
 
@@ -641,7 +643,7 @@ fun OfflineDownloadScreen(
         ) {
             Text(route?.name ?: "Custom area", color = OnSurface, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
             Text(
-                "Pan and zoom so the green box covers the ground you want offline. Tilt is locked here so the box stays flat. Drag Area Size to grow or shrink the box, then tap Download.",
+                "Pan and zoom so the green box covers the ground you want offline. Tilt is locked here so the box stays flat. Drag Area Size to grow or shrink the box, then tap Download. The box freezes while downloading.",
                 color = OnSurface,
                 fontSize = 13.sp
             )
@@ -664,12 +666,16 @@ fun OfflineDownloadScreen(
             )
             Slider(
                 value = areaPadding,
-                onValueChange = { areaPadding = it },
+                onValueChange = { if (!boxLocked) areaPadding = it },
+                enabled = !boxLocked,
                 valueRange = 0f..1f,
                 colors = androidx.compose.material3.SliderDefaults.colors(
                     thumbColor = accent,
                     activeTrackColor = accent,
-                    inactiveTrackColor = SurfaceContainerHighest
+                    inactiveTrackColor = SurfaceContainerHighest,
+                    disabledThumbColor = accent.copy(alpha = 0.45f),
+                    disabledActiveTrackColor = accent.copy(alpha = 0.35f),
+                    disabledInactiveTrackColor = SurfaceContainerHighest
                 )
             )
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -682,13 +688,17 @@ fun OfflineDownloadScreen(
             Text("Zoom 10 — ${maxZoom.toInt()}", color = accent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             Slider(
                 value = maxZoom,
-                onValueChange = { maxZoom = it },
+                onValueChange = { if (!boxLocked) maxZoom = it },
+                enabled = !boxLocked,
                 valueRange = 12f..16f,
                 steps = 3,
                 colors = androidx.compose.material3.SliderDefaults.colors(
                     thumbColor = accent,
                     activeTrackColor = accent,
-                    inactiveTrackColor = SurfaceContainerHighest
+                    inactiveTrackColor = SurfaceContainerHighest,
+                    disabledThumbColor = accent.copy(alpha = 0.45f),
+                    disabledActiveTrackColor = accent.copy(alpha = 0.35f),
+                    disabledInactiveTrackColor = SurfaceContainerHighest
                 )
             )
 
@@ -713,7 +723,7 @@ fun OfflineDownloadScreen(
                     SettingsToggle(
                         label = "Include 3DEP terrain",
                         checked = includeDem,
-                        onCheckedChange = { includeDem = it }
+                        onCheckedChange = { if (!boxLocked) includeDem = it }
                     )
                     Text(
                         "3DEP slope, aspect, contours, and 3D only exist inside downloaded terrain boxes. They are not a live nationwide layer.",
