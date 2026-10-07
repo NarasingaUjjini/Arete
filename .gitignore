@@ -1,5 +1,12 @@
 # Android
 android/local.properties
+**/local.properties
+**/secrets.properties
+**/*.keystore
+**/*.jks
+.env
+.env.*
+*.pem
 android/.gradle/
 android/app/build/
 android/build/

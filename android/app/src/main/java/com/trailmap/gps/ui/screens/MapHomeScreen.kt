@@ -115,8 +115,9 @@ fun MapHomeScreen(
     deviceHeadingReady: Boolean = false,
     onMapChromeChange: (com.trailmap.gps.data.MapChromeLayout) -> Unit = {}
 ) {
-    var mapZoom by remember { mutableDoubleStateOf(12.0) }
+    var mapZoom by remember { mutableDoubleStateOf(15.0) }
     var mapLat by remember { mutableDoubleStateOf(currentLocation?.latitude ?: 37.0) }
+    var followUser by remember { mutableStateOf(true) }
     var moreOpen by remember { mutableStateOf(false) }
     val contourMaxDim = ContourGenerator.maxDimForZoom(mapZoom)
     val liveContourGeoJson = remember(contourProvider, contourGeoJson, contourMaxDim) {
@@ -158,16 +159,17 @@ fun MapHomeScreen(
             trackPoints = trackPoints,
             currentLocation = currentLocation,
             northUp = settings.northUp,
-            followUser = false,
+            followUser = followUser && !isDrawingRoute,
             recenterTrigger = recenterTrigger,
             fitRouteTrigger = fitRouteTrigger,
             orientationTrigger = orientationTrigger,
             onMapClick = if (isDrawingRoute) onMapClick else { lat, lon -> onInspect(lat, lon) },
             onMapLongClick = onInspect,
+            onFollowInterrupted = { followUser = false },
             inspectPoint = inspectPoint,
             terrainOverlay = terrainOverlay,
             terrainOverlayBounds = terrainOverlayBounds,
-            autoFitRoute = !isDrawingRoute,
+            autoFitRoute = !isDrawingRoute && !followUser,
             onBearingChanged = onBearingChanged,
             onScaleChanged = { zoom, lat ->
                 mapZoom = zoom
@@ -186,7 +188,10 @@ fun MapHomeScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             CompassRoseButton(mapBearing = mapBearing, onClick = onAlignNorth)
-            RecenterButton(onClick = onRecenter)
+            RecenterButton(onClick = {
+                followUser = true
+                onRecenter()
+            })
         }
 
         if (!isFullscreen) {

@@ -97,3 +97,11 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 - No account required
 - All data stored on device
 - No analytics, no ads, no tracking
+
+## License
+
+Arete is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE). Personal / noncommercial use is allowed; commercial use is not.
+
+## Secrets
+
+NPS and Recreation.gov keys live only in gitignored `android/local.properties` on your machine. They are never committed, and GitHub Release APKs are built with `ARETE_PUBLIC_BUILD=1` so those fields are empty in the public binary.

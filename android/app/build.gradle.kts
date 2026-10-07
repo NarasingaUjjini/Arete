@@ -13,18 +13,21 @@ android {
         applicationId = "com.trailmap.gps"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
         fun secret(name: String): String {
             // Public / CI APKs must never bake in personal NPS/RIDB keys.
+            // Never read secrets from process environment — only from gitignored local.properties.
             if (System.getenv("ARETE_PUBLIC_BUILD") == "1") return ""
             val local = rootProject.file("local.properties")
             if (!local.exists()) return ""
             val raw = local.readLines()
-                .firstOrNull { it.startsWith("$name=") }
+                .firstOrNull { it.startsWith("$name=") && !it.trimStart().startsWith("#") }
                 ?.substringAfter("=")
                 ?.trim()
                 .orEmpty()
+            // Refuse obviously-placeholder values so nothing accidental ships.
+            if (raw.isEmpty() || raw.contains("YOUR_") || raw.equals("changeme", ignoreCase = true)) return ""
             return raw.replace("\\", "\\\\").replace("\"", "\\\"")
         }
         buildConfigField("String", "NPS_API_KEY", "\"${secret("NPS_API_KEY")}\"")

@@ -70,6 +70,7 @@ fun TrailMapView(
     onRegionBoundsChanged: ((DoubleArray) -> Unit)? = null,
     onMapClick: ((lat: Double, lon: Double) -> Unit)? = null,
     onMapLongClick: ((lat: Double, lon: Double) -> Unit)? = null,
+    onFollowInterrupted: () -> Unit = {},
     inspectPoint: Pair<Double, Double>? = null,
     terrainOverlay: Bitmap? = null,
     terrainOverlayBounds: BoundingBox? = null,
@@ -90,6 +91,7 @@ fun TrailMapView(
     clickHandlerState.value = currentClickHandler
     val longClickHandlerState = remember { mutableStateOf(onMapLongClick) }
     longClickHandlerState.value = onMapLongClick
+    val followInterruptedState = rememberUpdatedState(onFollowInterrupted)
     val regionInsetState = remember { mutableStateOf(regionInsetDp) }
     val cameraLockedState = remember { mutableStateOf(cameraLocked) }
     val boundsCallbackState = remember { mutableStateOf(onRegionBoundsChanged) }
@@ -173,6 +175,11 @@ fun TrailMapView(
                             .build()
                     }
                     map.prefetchZoomDelta = if (batterySaver) 0 else 3
+                    map.addOnCameraMoveStartedListener { reason ->
+                        if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
+                            followInterruptedState.value()
+                        }
+                    }
                     map.addOnCameraMoveListener {
                         onBearingChanged(map.cameraPosition.bearing.toDouble())
                         reportScale(map)
@@ -329,20 +336,22 @@ fun TrailMapView(
         )
     }
 
-    LaunchedEffect(followUser, currentLocation, northUp, styleLoaded) {
+    LaunchedEffect(followUser, currentLocation?.latitude, currentLocation?.longitude, currentLocation?.bearing, northUp, styleLoaded) {
         if (!styleLoaded || !followUser) return@LaunchedEffect
         val loc = currentLocation ?: return@LaunchedEffect
+        if (!loc.latitude.isFinite() || !loc.longitude.isFinite()) return@LaunchedEffect
         val map = mapRef ?: return@LaunchedEffect
         val bearing = if (northUp) 0.0 else loc.bearing.toDouble()
+        val zoom = map.cameraPosition.zoom.let { if (it < 2.0) 15.0 else it.coerceAtLeast(14.0) }
         map.easeCamera(
             CameraUpdateFactory.newCameraPosition(
                 CameraPosition.Builder()
                     .target(LatLng(loc.latitude, loc.longitude))
-                    .zoom(map.cameraPosition.zoom.coerceAtLeast(14.0))
+                    .zoom(zoom)
                     .bearing(bearing)
                     .build()
             ),
-            800
+            450
         )
     }
 
