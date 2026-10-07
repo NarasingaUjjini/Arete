@@ -40,6 +40,9 @@ import com.trailmap.gps.ui.theme.OnSurfaceVariant
 import com.trailmap.gps.ui.theme.RedAlert
 import java.util.Locale
 
+private const val NPS_API_KEY_URL = "https://www.nps.gov/subjects/developer/get-started.htm"
+private const val RIDB_API_KEY_URL = "https://ridb.recreation.gov/"
+
 @Composable
 fun RecInfoScreen(
     snapshot: RecInfoSnapshot?,
@@ -53,6 +56,7 @@ fun RecInfoScreen(
         if (url.isBlank()) return
         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
     }
+    val missingKeys = snapshot?.error?.contains("key", ignoreCase = true) == true
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -97,6 +101,27 @@ fun RecInfoScreen(
             snapshot?.error?.let {
                 Text(it, color = RedAlert, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
             }
+
+            AlpineSectionLabel(
+                if (missingKeys) "Get free API keys" else "API keys (optional)",
+                modifier = Modifier.padding(top = 20.dp, bottom = 8.dp)
+            )
+            Text(
+                "Public installs ship without NPS/Recreation.gov keys. Free keys unlock alerts, campgrounds, and facilities in this screen. Add them to android/local.properties and rebuild.",
+                color = OnSurfaceVariant,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            AlpineOutlineButton(
+                "Get NPS API key",
+                { open(NPS_API_KEY_URL) },
+                Modifier.fillMaxWidth()
+            )
+            AlpineOutlineButton(
+                "Get Recreation.gov (RIDB) API key",
+                { open(RIDB_API_KEY_URL) },
+                Modifier.fillMaxWidth().padding(top = 8.dp)
+            )
 
             AlpineSectionLabel("Alerts", modifier = Modifier.padding(top = 20.dp, bottom = 8.dp))
             if (snapshot?.alerts.isNullOrEmpty()) {

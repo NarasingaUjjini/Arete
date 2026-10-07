@@ -194,6 +194,18 @@ fun ConditionsScreen(
             AlpineOutlineButton("NPS Find a Park", { open(conditions?.recreation?.npsFindParkUrl ?: "https://www.nps.gov/findapark/index.htm") }, Modifier.fillMaxWidth())
             Spacer(modifier = Modifier.height(8.dp))
             AlpineOutlineButton("Recreation.gov", { open(conditions?.recreation?.recreationGovUrl ?: "https://www.recreation.gov/") }, Modifier.fillMaxWidth())
+            Spacer(modifier = Modifier.height(8.dp))
+            AlpineOutlineButton(
+                "Get NPS API key (free)",
+                { open("https://www.nps.gov/subjects/developer/get-started.htm") },
+                Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            AlpineOutlineButton(
+                "Get Recreation.gov API key (free)",
+                { open("https://ridb.recreation.gov/") },
+                Modifier.fillMaxWidth()
+            )
         }
     }
 }

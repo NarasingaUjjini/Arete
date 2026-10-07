@@ -1,7 +1,9 @@
 ## Copy to local.properties (gitignored — never commit that file).
 ## Android Studio writes sdk.dir. Leave the keys blank unless you issue
-## your own free keys from NPS / Recreation.gov. Public GitHub Releases
-## strip these via ARETE_PUBLIC_BUILD=1.
+## your own free keys. Public GitHub Releases strip these via ARETE_PUBLIC_BUILD=1.
+##
+## NPS:  https://www.nps.gov/subjects/developer/get-started.htm
+## RIDB: https://ridb.recreation.gov/
 #
 # sdk.dir=/path/to/Android/sdk
 # NPS_API_KEY=

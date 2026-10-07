@@ -17,7 +17,7 @@ class RecreationProvider {
             } else if (hasKeys) {
                 "No nearby NPS or Recreation.gov units returned for this point."
             } else {
-                "No NPS/RIDB key on this build. Use the official public pages."
+                "No NPS/RIDB key on this build. Get free keys from NPS Developer and RIDB, or use the official public pages below."
             }
         )
     }

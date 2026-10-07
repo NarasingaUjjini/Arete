@@ -21,7 +21,7 @@ class RecInfoRepository(context: Context) {
             return@withContext RecInfoSnapshot(
                 latitude = lat,
                 longitude = lon,
-                error = "No NPS or RIDB key on this build."
+                error = "No NPS or RIDB key on this build. Tap Get NPS API key / Get Recreation.gov key below (free)."
             )
         }
         if (!NetworkGate.allowNetwork()) {

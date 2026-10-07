@@ -53,7 +53,7 @@ Every push to **main** that touches `android/` rebuilds and publishes `Arete.apk
 3. Connect your Android phone (USB debugging enabled) or use an emulator
 4. Run the app (green play button)
 
-Optional Rec Info keys (your own, never commit them): copy `android/local.properties.example` and add `NPS_API_KEY` / `RIDB_API_KEY`.
+Optional Rec Info keys (your own, never commit them): get free keys from [NPS Developer](https://www.nps.gov/subjects/developer/get-started.htm) and [RIDB / Recreation.gov](https://ridb.recreation.gov/), copy `android/local.properties.example` to `local.properties`, and add `NPS_API_KEY` / `RIDB_API_KEY`.
 
 ### Build from command line
 
