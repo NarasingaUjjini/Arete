@@ -55,19 +55,22 @@ jobs:
           path: android/dist/*.apk
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: ncipollo/release-action@v1
         with:
-          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'sideload' }}
+          tag: ${{ github.ref_type == 'tag' && github.ref_name || 'sideload' }}
           name: ${{ github.ref_type == 'tag' && github.ref_name || 'Sideload APK' }}
-          prerelease: false
-          make_latest: true
-          generate_release_notes: ${{ github.ref_type == 'tag' }}
-          files: android/dist/*.apk
+          commit: ${{ github.sha }}
+          allowUpdates: true
+          replacesArtifacts: true
+          makeLatest: true
+          artifacts: android/dist/*.apk
           body: |
             Sideload APK (debug-signed). Allow install from unknown sources.
 
             This build does **not** include NPS or Recreation.gov API keys.
             Maps, GPS, import, and USGS/NWS still work. Rec Info stays empty
             unless you build locally with your own keys in `local.properties`.
+
+            Get free keys: [NPS](https://www.nps.gov/subjects/developer/get-started.htm) · [Recreation.gov RIDB](https://ridb.recreation.gov/)
 
             Built from `${{ github.sha }}` on `${{ github.ref_name }}`.
